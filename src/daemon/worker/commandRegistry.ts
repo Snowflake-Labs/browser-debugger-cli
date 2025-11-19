@@ -21,7 +21,6 @@ export function createCommandRegistry(store: TelemetryStore): CommandRegistry {
       const offset = params.offset ?? 0;
       const duration = Date.now() - store.sessionStartTime;
 
-      // Calculate slice positions from the end, accounting for offset
       const totalNetwork = store.networkRequests.length;
       const totalConsole = store.consoleMessages.length;
 
@@ -123,6 +122,12 @@ export function createCommandRegistry(store: TelemetryStore): CommandRegistry {
       };
 
       return Promise.resolve(result);
+    },
+
+    worker_har_data: async (_cdp, _params) => {
+      return Promise.resolve({
+        requests: store.networkRequests,
+      });
     },
 
     cdp_call: async (cdp, params) => {
