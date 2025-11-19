@@ -30,14 +30,16 @@
 ### 🚧 In Progress
 
 **Active GitHub Issues**:
-- Issue #62: Network Control Commands (`cache/throttle/block`) - **M2 Network Foundation**
+- None currently in progress
 
 ### 📋 Priority Queue (Next Up)
 
 **High Priority** (Referenced in archived feedback docs):
+- Issue #48: Document request capture (main HTML document in network telemetry)
+- Issue #49: Network headers command for direct header inspection
+- Issue #50: Security CSP command for CSP analysis
 - DOM wait command (`bdg dom wait --selector --state --timeout`)
 - Semantic selectors (click by text instead of CSS)
-- Document request capture (main HTML document in network telemetry)
 - Security headers commands (`bdg security headers/csp/cookies`)
 
 See [`../IMPLEMENTATION_STATUS.md`](../IMPLEMENTATION_STATUS.md) for detailed feature tracking.
@@ -47,11 +49,10 @@ See [`../IMPLEMENTATION_STATUS.md`](../IMPLEMENTATION_STATUS.md) for detailed fe
 **Why M2?** Network telemetry and control commands enable:
 - ✅ HAR export for debugging network issues (Complete)
 - Request/response inspection and replay
-- Network throttling and offline mode simulation
-- Cache control for testing scenarios
+- Complete network data capture (including document requests)
 
-**Next Up**: Issue #62 (Network Control Commands)
-**Blockers**: None (CDP methods available)
+**Next Up**: Issue #48 (Document request capture)
+**Blockers**: None
 
 ---
 
