@@ -16,6 +16,7 @@ import {
   readSessionOutput,
   waitForDaemon,
 } from '@/__testutils__/daemonHelpers.js';
+import type { BdgOutput } from '@/types.js';
 
 void describe('Session Lifecycle Smoke Tests', () => {
   afterEach(async () => {
@@ -53,15 +54,13 @@ void describe('Session Lifecycle Smoke Tests', () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Peek at collected data
-    const peekResult = await runCommandJSON<{ preview: Record<string, unknown> }>('peek', [
-      '--json',
-    ]);
+    const peekResult = await runCommandJSON<BdgOutput>('peek', ['--json']);
 
     // Should have collected some data
     assert.ok(peekResult);
     assert.ok(typeof peekResult === 'object');
-    assert.ok('preview' in peekResult);
-    assert.ok('data' in peekResult.preview);
+    assert.ok('version' in peekResult);
+    assert.ok('data' in peekResult);
 
     // Stop session to clean up
     const stopResult = await runCommand('stop', [], { timeout: 10000 });
