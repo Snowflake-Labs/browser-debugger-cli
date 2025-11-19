@@ -27,7 +27,7 @@ void describe('Session Lifecycle Smoke Tests', () => {
   void it('should start session and create daemon', async () => {
     // Start session with a simple URL using a unique port to avoid conflicts
     const result = await runCommand('http://example.com', ['--port', '9223', '--headless'], {
-      timeout: 15000, // Increased from 10s to handle slow CI runners
+      timeout: 20000, // Increased to 20s to handle slow CI runners (saw 17s on GitHub Actions)
     });
 
     // Should succeed
