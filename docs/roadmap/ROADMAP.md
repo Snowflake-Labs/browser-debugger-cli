@@ -11,6 +11,7 @@
 ### ✅ Recently Completed
 
 **v0.7.0-alpha (2025-11-19)**:
+- HAR 1.2 Export (`bdg network har`) with complete timing data - Issue #61
 - Accessibility Engine Phase 1 & 2 (`bdg dom a11y tree/query/describe`) - Issue #60
 - Semantic output for DOM inspection (70-99% token reduction)
 - A11y tree integration in DOM snapshots
@@ -29,7 +30,6 @@
 ### 🚧 In Progress
 
 **Active GitHub Issues**:
-- Issue #61: HAR Export (`bdg network har`) - **M2 Network Foundation**
 - Issue #62: Network Control Commands (`cache/throttle/block`) - **M2 Network Foundation**
 
 ### 📋 Priority Queue (Next Up)
@@ -45,12 +45,12 @@ See [`../IMPLEMENTATION_STATUS.md`](../IMPLEMENTATION_STATUS.md) for detailed fe
 ### 🎯 Current Focus: M2 - Network Foundation
 
 **Why M2?** Network telemetry and control commands enable:
-- HAR export for debugging network issues
+- ✅ HAR export for debugging network issues (Complete)
 - Request/response inspection and replay
 - Network throttling and offline mode simulation
 - Cache control for testing scenarios
 
-**Next Up**: Issue #61 (HAR Export), Issue #62 (Network Control Commands)
+**Next Up**: Issue #62 (Network Control Commands)
 **Blockers**: None (CDP methods available)
 
 ---

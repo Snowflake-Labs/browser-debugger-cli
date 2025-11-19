@@ -196,8 +196,10 @@ bdg network har --json                    # Returns metadata about exported file
 **Output:**
 - Valid HAR 1.2 format compatible with Chrome DevTools and HAR Viewer
 - Includes all request/response data (URLs, methods, headers, bodies)
+- Complete timing breakdown: blocked, DNS, connect, SSL, send, wait, receive
 - Binary content automatically base64 encoded
 - Creator and browser metadata included
+- Server IP address and connection ID tracking
 - Timing fields use `-1` for unknown values (HAR spec compliant)
 
 **File Location:**
