@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.2] - 2025-11-19
+
+### Added
+
+- **Accessibility tree inspection** (`bdg dom a11y`) - Comprehensive accessibility testing capabilities (#64)
+  - `bdg dom a11y tree` - View full accessibility tree with role/name/description hierarchy
+  - `bdg dom a11y query <pattern>` - Query nodes by role, name, or description (AND logic)
+  - `bdg dom a11y describe <selector>` - Get accessibility info for specific element
+  - Exposes Chrome's accessibility tree (what screen readers see)
+  - Human-readable tree view with automatic ignored node filtering
+  - JSON output for programmatic processing
+  - Use cases: verify accessible names, validate ARIA landmarks, audit form labels, CI/CD accessibility testing
+- **Aggressive daemon cleanup** - Enhanced cleanup of orphaned daemon processes (#46)
+  - `bdg cleanup --aggressive` now finds and kills orphaned daemon processes
+  - Cross-platform support (macOS, Linux, Windows)
+  - Prevents resource leaks from test failures, timeouts, and crashes
+  - Safe cleanup that preserves currently tracked daemon
+
+### Changed
+
+- **Test infrastructure consolidation** (#63)
+  - Added c8 coverage tooling with proper exclusions for test files
+  - Added comprehensive unit tests for core utilities (errors, http, process)
+  - Created reusable shell test helpers in `tests/lib/`
+  - Hardened shell tests against timing issues with better retry logic
+  - Improved smoke test reliability with better timeouts and daemon helpers
+- **Documentation reorganization** (#63)
+  - Consolidated scattered planning docs into `docs/roadmap/`
+  - Moved agent principles to dedicated `docs/principles/` directory
+  - Created `docs/quality/` section with test guides and shell test hardening docs
+  - Added implementation status tracking in roadmap
+  - Updated README with clear documentation navigation section
+- **Code quality improvements** (#59)
+  - Enhanced error handling and logging consistency
+  - Improved module boundaries and separation of concerns
+  - All 19 integration tests now pass (100% pass rate)
+
+### Fixed
+
+- **Test reliability** (#59)
+  - Fixed `tail.test` to match current JSON output format
+  - Fixed `url-handling.test` to use `--headless` flag for IP address test
+
+### Dependencies
+
+- Bump js-yaml from 4.1.0 to 4.1.1 (#45) - dev dependency security update
+
 ## [0.6.1] - 2025-11-16
 
 ### Changed
