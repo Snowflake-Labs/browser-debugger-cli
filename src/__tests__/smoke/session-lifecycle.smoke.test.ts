@@ -27,11 +27,11 @@ void describe('Session Lifecycle Smoke Tests', () => {
   void it('should start session and create daemon', async () => {
     // Start session with a simple URL using a unique port to avoid conflicts
     const result = await runCommand('http://example.com', ['--port', '9223', '--headless'], {
-      timeout: 20000, // Increased to 20s to handle slow CI runners (saw 17s on GitHub Actions)
+      timeout: 30000, // Increased to 30s for GitHub Actions (observed 22s+ on slow runners)
     });
 
     // Should succeed
-    assert.equal(result.exitCode, 0);
+    assert.equal(result.exitCode, 0, `Start failed: ${result.stderr}`);
 
     // Daemon should be running
     assert.equal(isDaemonRunning(), true);
