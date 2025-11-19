@@ -1,15 +1,21 @@
 import type { Command } from 'commander';
 
+import { registerA11yCommands } from '@/commands/dom/a11y.js';
 import { queryDOMElements, getDOMElements, capturePageScreenshot } from '@/commands/dom/helpers.js';
 import type { DomGetOptions as DomGetHelperOptions } from '@/commands/dom/helpers.js';
 import type { BaseCommandOptions } from '@/commands/shared/CommandRunner.js';
 import { runCommand } from '@/commands/shared/CommandRunner.js';
+import { getA11yNodeBySelector } from '@/telemetry/a11y.js';
+import type { A11yNode } from '@/types.js';
+import { CommandError } from '@/ui/errors/index.js';
 import {
   formatDomQuery,
   formatDomGet,
   formatDomEval,
   formatDomScreenshot,
 } from '@/ui/formatters/dom.js';
+import { semantic } from '@/ui/formatters/semantic.js';
+import { EXIT_CODES } from '@/utils/exitCodes.js';
 import { filterDefined } from '@/utils/objects.js';
 import { parsePositiveIntOption } from '@/utils/validation.js';
 
@@ -25,6 +31,7 @@ interface DomGetOptions extends BaseCommandOptions {
   all?: boolean;
   nth?: number;
   nodeId?: number;
+  raw?: boolean;
 }
 
 /**
@@ -59,28 +66,55 @@ async function handleDomQuery(selector: string, options: DomQueryOptions): Promi
 /**
  * Handle bdg dom get command
  *
- * Retrieves full HTML and attributes for DOM elements. Accepts CSS selector or direct nodeId.
- * Uses CDP relay through worker's persistent connection.
+ * Retrieves semantic accessibility structure by default (70% token reduction).
+ * Use --raw flag for full HTML output.
  *
  * @param selector - CSS selector (e.g., ".error")
- * @param options - Command options including --all, --nth, and nodeId
+ * @param options - Command options including --all, --nth, nodeId, and raw
  */
 async function handleDomGet(selector: string, options: DomGetOptions): Promise<void> {
-  await runCommand(
-    async () => {
-      const getOptions = filterDefined({
-        selector,
-        all: options.all,
-        nth: options.nth,
-        nodeId: options.nodeId,
-      }) as DomGetHelperOptions;
+  if (options.raw) {
+    await runCommand(
+      async () => {
+        const getOptions = filterDefined({
+          selector,
+          all: options.all,
+          nth: options.nth,
+          nodeId: options.nodeId,
+        }) as DomGetHelperOptions;
 
-      const result = await getDOMElements(getOptions);
-      return { success: true, data: result };
-    },
-    options,
-    formatDomGet
-  );
+        const result = await getDOMElements(getOptions);
+        return { success: true, data: result };
+      },
+      options,
+      formatDomGet
+    );
+  } else {
+    await runCommand(
+      async () => {
+        const node = await getA11yNodeBySelector(selector);
+
+        if (!node) {
+          throw new CommandError(
+            `Element not found or has no accessibility information: ${selector}`,
+            { suggestion: 'Try: bdg dom query <selector> to verify element exists' },
+            EXIT_CODES.RESOURCE_NOT_FOUND
+          );
+        }
+
+        return { success: true, data: node };
+      },
+      options,
+      (node: A11yNode) => {
+        const fakeTree = {
+          root: node,
+          nodes: new Map([[node.nodeId, node]]),
+          count: 1,
+        };
+        return semantic(fakeTree);
+      }
+    );
+  }
 }
 
 /**
@@ -181,7 +215,8 @@ async function handleDomEval(script: string, options: DomEvalOptions): Promise<v
 export function registerDomCommands(program: Command): void {
   const dom = program.command('dom').description('DOM inspection and manipulation');
 
-  // bdg dom query <selector>
+  registerA11yCommands(dom);
+
   dom
     .command('query')
     .description('Find elements by CSS selector')
@@ -191,7 +226,6 @@ export function registerDomCommands(program: Command): void {
       await handleDomQuery(selector, options);
     });
 
-  // bdg dom eval <script>
   dom
     .command('eval')
     .description('Evaluate JavaScript expression in the page context')
@@ -202,20 +236,19 @@ export function registerDomCommands(program: Command): void {
       await handleDomEval(script, options);
     });
 
-  // bdg dom get <selector>
   dom
     .command('get')
-    .description('Get full HTML and attributes for elements')
+    .description('Get semantic accessibility structure (default) or raw HTML (--raw)')
     .argument('<selector>', 'CSS selector (e.g., ".error", "#app", "button")')
-    .option('--all', 'Target all matches')
-    .option('--nth <n>', 'Target nth match', parseInt)
-    .option('--node-id <id>', 'Use nodeId directly (advanced)', parseInt)
+    .option('--raw', 'Output raw HTML with all filtering options')
+    .option('--all', 'Get all matches (only with --raw)')
+    .option('--nth <n>', 'Get nth match (only with --raw)', parseInt)
+    .option('--node-id <id>', 'Use nodeId directly (only with --raw)', parseInt)
     .option('-j, --json', 'Output as JSON')
     .action(async (selector: string, options: DomGetOptions) => {
       await handleDomGet(selector, options);
     });
 
-  // bdg dom screenshot <path>
   dom
     .command('screenshot')
     .description('Capture page screenshot')

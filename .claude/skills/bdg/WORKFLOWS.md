@@ -497,6 +497,180 @@ RESULT=$(bdg cdp Runtime.evaluate --params '{
 echo "$RESULT" | jq '.result.value'
 ```
 
+### 16. Accessibility Tree - Find All Buttons
+
+```bash
+# Get full accessibility tree and filter for button role
+bdg dom a11y tree --json | jq -r '.nodes | to_entries[] | select(.value.role == "button") | .value | "\(.name // "Unnamed") (\(.nodeId))"'
+
+# Or use query command (simpler)
+bdg dom a11y query role=button --json | jq -r '.nodes[] | .name // "Unnamed button"'
+```
+
+**Use cases**:
+- Verify all interactive elements have accessible names
+- Test screen reader compatibility
+- Audit form controls for accessibility
+
+### 17. Accessibility - Verify Form Labels
+
+```bash
+#!/bin/bash
+# Check if all form inputs have accessible names
+
+bdg https://myapp.com/signup
+
+# Query all textbox roles (includes input fields)
+INPUTS=$(bdg dom a11y query role=textbox --json)
+
+# Check for inputs without names
+UNLABELED=$(echo "$INPUTS" | jq -r '.nodes[] | select(.name == null or .name == "") | .nodeId')
+
+if [ -n "$UNLABELED" ]; then
+  echo "❌ Found unlabeled inputs: $UNLABELED"
+  exit 1
+else
+  echo "✅ All inputs have accessible names"
+fi
+
+bdg stop
+```
+
+**Key insight**: Screen readers use the `name` property to announce form fields. Empty names indicate missing labels.
+
+### 18. Accessibility - Validate ARIA Landmarks
+
+```bash
+# Verify page has proper landmark structure
+bdg https://example.com
+
+# Check for main landmark
+MAIN=$(bdg dom a11y query role=main --json | jq -r '.count')
+[ "$MAIN" -eq 1 ] && echo "✅ Page has one main landmark" || echo "❌ Page should have exactly one main landmark"
+
+# Check for navigation
+NAV=$(bdg dom a11y query role=navigation --json | jq -r '.count')
+[ "$NAV" -gt 0 ] && echo "✅ Page has navigation landmark" || echo "⚠️  No navigation landmark found"
+
+# Check for banner (header)
+BANNER=$(bdg dom a11y query role=banner --json | jq -r '.count')
+[ "$BANNER" -gt 0 ] && echo "✅ Page has banner landmark" || echo "⚠️  No banner landmark found"
+
+# Check for contentinfo (footer)
+CONTENTINFO=$(bdg dom a11y query role=contentinfo --json | jq -r '.count')
+[ "$CONTENTINFO" -gt 0 ] && echo "✅ Page has contentinfo landmark" || echo "⚠️  No contentinfo landmark found"
+
+bdg stop
+```
+
+**ARIA landmark roles**: main, navigation, banner, contentinfo, complementary, search, region, form
+
+### 19. Accessibility - Test Element State
+
+```bash
+# Verify specific element's accessibility properties
+INFO=$(bdg dom a11y describe "button#submit-form" --json)
+
+echo "$INFO" | jq '{
+  role: .role,
+  name: .name,
+  focusable: .focusable,
+  disabled: .disabled
+}'
+
+# Example output:
+# {
+#   "role": "button",
+#   "name": "Submit Form",
+#   "focusable": true,
+#   "disabled": false
+# }
+```
+
+**Use cases**:
+- Verify disabled state is communicated to screen readers
+- Check focus management in modal dialogs
+- Validate ARIA live regions
+
+### 20. Accessibility - Audit Interactive Elements
+
+```bash
+#!/bin/bash
+# Comprehensive accessibility audit for interactive elements
+
+bdg https://myapp.com
+
+# Find all buttons, links, and form controls
+echo "=== Buttons ==="
+bdg dom a11y query role=button --json | jq -r '.nodes[] | select(.name == null or .name == "") | "⚠️  Unnamed button (ID: \(.nodeId))"'
+
+echo "=== Links ==="
+bdg dom a11y query role=link --json | jq -r '.nodes[] | select(.name == null or .name == "") | "⚠️  Link without text (ID: \(.nodeId))"'
+
+echo "=== Form Inputs ==="
+bdg dom a11y query role=textbox --json | jq -r '.nodes[] | select(.name == null or .name == "") | "⚠️  Unlabeled input (ID: \(.nodeId))"'
+
+echo "=== Images ==="
+# Check for images that might need alt text (images with role=img typically come from <img> tags)
+bdg cdp Runtime.evaluate --params '{
+  "expression": "Array.from(document.querySelectorAll(\"img:not([alt])\")).map(img => img.src)",
+  "returnByValue": true
+}' | jq -r '.result.value[] | "⚠️  Image missing alt text: \(.)"'
+
+bdg stop
+```
+
+**Best practice**: Run this audit as part of CI/CD to catch accessibility regressions.
+
+### 21. Semantic DOM Inspection (Token-Efficient)
+
+```bash
+#!/bin/bash
+# Use semantic A11y output for 70-99% token reduction vs raw HTML
+# Ideal for AI agents, automation, and accessibility testing
+
+bdg https://myapp.com
+
+# Get semantic representation (default) - 70%+ token reduction
+echo "=== Semantic Output ==="
+bdg dom get "h1"                    # [Heading L1] "Page Title"
+bdg dom get "button"                # [Button] "Submit" (focusable)
+bdg dom get "#searchInput"          # [Searchbox] "Search" (focusable)
+bdg dom get "nav"                   # [Navigation] "Main menu"
+
+# Compare with raw HTML
+echo "=== Raw HTML ==="
+bdg dom get "button" --raw          # Full HTML with all attributes
+
+# Use semantic for automation
+BUTTON_LABEL=$(bdg dom get "button" | grep -oP '"\K[^"]+')
+if [[ "$BUTTON_LABEL" == "Submit" ]]; then
+  echo "✓ Button has correct label"
+fi
+
+# Get JSON for programmatic access
+bdg dom get "button" --json | jq '.role, .name, .focusable'
+
+bdg stop
+```
+
+**Token efficiency examples:**
+- Simple button: `41 chars` (semantic) vs `233 chars` (HTML) = **82% reduction**
+- Search input: `42 chars` (semantic) vs `278 chars` (HTML) = **85% reduction**
+- Navigation: `19 chars` (semantic) vs `4,218 chars` (HTML) = **99.5% reduction**
+
+**When to use semantic:**
+- ✅ AI agent interactions (massive token savings)
+- ✅ Automated testing (verify labels, roles, states)
+- ✅ Accessibility audits (check ARIA properties)
+- ✅ Element identification (role + name is unique)
+
+**When to use `--raw`:**
+- Need exact HTML structure
+- CSS class inspection
+- Multiple elements (`--all`, `--nth`)
+- HTML/CSS debugging
+
 ---
 
 ## Error Handling

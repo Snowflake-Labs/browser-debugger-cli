@@ -34,9 +34,12 @@ bdg peek                        # Last 10 items (compact format)
 bdg peek --last 50              # Show last 50 items
 bdg peek --network              # Show only network requests
 bdg peek --console              # Show only console messages
+bdg peek --dom                  # Show DOM/A11y tree (available after stop)
 bdg peek --json                 # JSON output
 bdg peek --verbose              # Verbose output (full URLs, emojis)
 ```
+
+**Note:** DOM data (including A11y tree) is only captured when the session stops. During a live session, `bdg peek --dom` will show "(none)".
 
 ### Continuous monitoring
 ```bash
@@ -54,6 +57,120 @@ bdg tail --verbose              # Verbose output (full URLs, emojis)
 ```bash
 bdg details network <requestId>     # Full request/response with bodies
 bdg details console <index>         # Full console message with args
+```
+
+## DOM Commands
+
+### Accessibility Tree Inspection
+
+Inspect the accessibility tree exposed by Chrome DevTools Protocol.
+
+```bash
+# View full accessibility tree
+bdg dom a11y tree               # Display tree (first 50 nodes, human-readable)
+bdg dom a11y tree --json        # Full tree in JSON format
+
+# Query nodes by role, name, or description
+bdg dom a11y query role=button                    # Find all buttons
+bdg dom a11y query name="Submit"                  # Find by accessible name
+bdg dom a11y query role=button,name="Submit"      # Combine criteria (AND logic)
+bdg dom a11y query description="Click to submit"  # Find by description
+bdg dom a11y query --json                         # JSON output
+
+# Describe specific element by CSS selector
+bdg dom a11y describe "button[type='submit']"     # Get accessibility info for element
+bdg dom a11y describe "#login-form"               # Query by ID
+bdg dom a11y describe ".nav-link:first-child"     # Complex selectors supported
+bdg dom a11y describe --json                      # JSON output
+```
+
+**Query Pattern Syntax:**
+- `role=<value>` - Filter by ARIA role (case-insensitive)
+- `name=<value>` - Filter by accessible name (case-insensitive)
+- `description=<value>` - Filter by accessible description (case-insensitive)
+- Combine with commas for AND logic: `role=button,name=Submit`
+
+**Output:**
+- Tree view shows role, name, description, and key properties
+- Ignored nodes are automatically filtered out
+- Human-readable format limited to 50 nodes (use `--json` for complete output)
+
+### Element Inspection
+
+Get semantic accessibility structure or raw HTML for page elements.
+
+```bash
+# Semantic output (default) - 70%+ token reduction
+bdg dom get "h1"                              # Get semantic A11y representation
+bdg dom get "button"                          # [Button] "Submit" (focusable)
+bdg dom get "#searchInput"                    # [Searchbox] "Search" (focusable)
+bdg dom get ".nav-link"                       # First matching element
+
+# Raw HTML output
+bdg dom get "h1" --raw                        # Get full HTML with attributes
+bdg dom get "button" --raw --all             # Get all matching elements
+bdg dom get "button" --raw --nth 2           # Get 2nd matching element
+bdg dom get --raw --node-id 123              # Get by DOM nodeId
+
+# JSON output
+bdg dom get "h1" --json                       # A11y node structure as JSON
+bdg dom get "h1" --raw --json                # HTML as JSON
+```
+
+**Semantic vs Raw HTML:**
+
+| Feature | Semantic (Default) | Raw HTML (`--raw`) |
+|---------|-------------------|-------------------|
+| **Token Efficiency** | 70-99% reduction | Full HTML |
+| **Use Case** | AI agents, automation | Debugging, inspection |
+| **Format** | `[Role] "Name" (properties)` | Complete HTML with attributes |
+| **Filtering** | First match only | `--all`, `--nth`, `--node-id` |
+
+**Semantic Output Examples:**
+```
+[Heading L1] "Welcome"
+[Button] "Submit Form" (focusable)
+[Link] "Learn more" (focusable)
+[Searchbox] "Search" (focusable, required)
+[Navigation] "Main menu"
+[Paragraph]
+```
+
+**When to use `--raw`:**
+- Need exact HTML structure with classes and attributes
+- Multiple elements required (`--all`)
+- Specific element selection (`--nth`, `--node-id`)
+- CSS/HTML debugging
+
+**Token Efficiency:**
+- Simple elements: 45-75% reduction
+- Complex elements: 82-99% reduction
+- See `docs/TOKEN_EFFICIENCY.md` for detailed analysis
+
+### Element Query
+
+Find elements by CSS selector (returns compact summary).
+
+```bash
+bdg dom query "button"                        # Find all buttons
+bdg dom query ".error-message"                # Find by class
+bdg dom query "#login-form input"             # Complex selectors
+bdg dom query --json                          # JSON output
+```
+
+**Output:**
+- Shows count and preview of matched elements
+- Lists nodeId, tag, classes, and text preview
+- Use results with `bdg dom get` for full details
+
+### JavaScript Evaluation
+
+Execute JavaScript in the page context.
+
+```bash
+bdg dom eval "document.title"                     # Evaluate expression
+bdg dom eval "document.querySelector('h1').textContent"
+bdg dom eval --json                               # JSON output with full Runtime.evaluate response
 ```
 
 ## Maintenance
