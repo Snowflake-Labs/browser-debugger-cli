@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.4] - 2025-11-20
+
+### Added
+
+- **Network headers command** (`bdg network headers`) - HTTP header inspection for debugging and analysis (#67)
+  - `bdg network headers` - Display all request and response headers for all network requests
+  - `bdg network headers <id>` - Show headers for a specific request by ID
+  - `bdg network headers --request` - Show only request headers
+  - `bdg network headers --response` - Show only response headers
+  - Human-readable tabular format with proper key-value alignment
+  - JSON output mode for programmatic processing
+  - Works with both live sessions and post-session analysis
+- **Resource type filtering** - Enhanced network telemetry with resource type metadata (#66)
+  - All network requests now include `resourceType` field (Document, Stylesheet, Script, XHR, Fetch, Image, Font, etc.)
+  - `bdg peek --type <types>` - Filter by resource type (e.g., `--type Document,XHR`)
+  - Resource types displayed in peek command output alongside URLs
+  - Better understanding of network traffic composition for debugging and optimization
+
+### Changed
+
+- **Documentation updates** - Updated CLI reference and roadmap for HAR export feature
+  - Removed completed Issue #62 from roadmap
+  - Prioritized Issue #48 (form interaction enhancements)
+
 ## [0.6.3] - 2025-11-19
 
 ### Added
