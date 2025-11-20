@@ -1,7 +1,9 @@
 import type { TelemetryStore } from './TelemetryStore.js';
 
 import type { CDPConnection } from '@/connection/cdp.js';
+import { PatternDetector } from '@/daemon/patternDetector.js';
 import type { CommandName, CommandSchemas, WorkerStatusData } from '@/ipc/index.js';
+import { generatePatternHint } from '@/ui/messages/hints.js';
 import { filterDefined } from '@/utils/objects.js';
 import { VERSION } from '@/utils/version.js';
 
@@ -15,6 +17,8 @@ export type CommandRegistry = {
 };
 
 export function createCommandRegistry(store: TelemetryStore): CommandRegistry {
+  const patternDetector = new PatternDetector();
+
   return {
     worker_peek: async (_cdp, params) => {
       const lastN = Math.min(params.lastN ?? 10, 100);
@@ -37,6 +41,7 @@ export function createCommandRegistry(store: TelemetryStore): CommandRegistry {
           url: req.url,
           status: req.status,
           mimeType: req.mimeType,
+          resourceType: req.resourceType,
         })
       );
 
@@ -134,7 +139,13 @@ export function createCommandRegistry(store: TelemetryStore): CommandRegistry {
       let targetRequest;
 
       if (!params.id) {
-        targetRequest = store.networkRequests.findLast((r) => r.mimeType?.includes('html'));
+        const currentNavId = store.getCurrentNavigationId?.() ?? 0;
+
+        targetRequest = store.networkRequests.findLast(
+          (r) => r.navigationId === currentNavId && r.resourceType === 'Document'
+        );
+
+        targetRequest ??= store.networkRequests.findLast((r) => r.mimeType?.includes('html'));
 
         targetRequest ??= store.networkRequests.findLast(
           (r) => r.responseHeaders && Object.keys(r.responseHeaders).length > 0
@@ -173,7 +184,15 @@ export function createCommandRegistry(store: TelemetryStore): CommandRegistry {
 
     cdp_call: async (cdp, params) => {
       const result = await cdp.send(params.method, params.params ?? {});
-      return { result };
+
+      const detectionResult = patternDetector.trackCommand(params.method);
+      let hint: string | undefined;
+
+      if (detectionResult.shouldShow && detectionResult.pattern) {
+        hint = generatePatternHint(detectionResult.pattern);
+      }
+
+      return { result, hint };
     },
   } as CommandRegistry;
 }

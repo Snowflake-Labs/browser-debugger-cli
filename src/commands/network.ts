@@ -14,6 +14,7 @@ import type { BdgOutput, NetworkRequest } from '@/types.js';
 import { isDaemonConnectionError } from '@/ui/errors/utils.js';
 import type { Cookie } from '@/ui/formatters/index.js';
 import { formatCookies, formatNetworkHeaders } from '@/ui/formatters/index.js';
+import { sessionNotActiveError } from '@/ui/messages/errors.js';
 import { AtomicFileWriter } from '@/utils/atomicFile.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 import { VERSION } from '@/utils/version.js';
@@ -93,7 +94,7 @@ function fetchFromOfflineSession(): NetworkRequest[] {
   const sessionPath = getSessionFilePath('OUTPUT');
 
   if (!fs.existsSync(sessionPath)) {
-    throw new Error('No active session or session.json found. Start a session with: bdg <url>', {
+    throw new Error(sessionNotActiveError('export network data'), {
       cause: { code: EXIT_CODES.RESOURCE_NOT_FOUND },
     });
   }
@@ -227,14 +228,50 @@ export function registerNetworkCommands(program: Command): void {
 
   networkCmd
     .command('headers [id]')
-    .description('Show HTTP headers (defaults to main page navigation)')
+    .description('Show HTTP headers (defaults to current main document)')
     .option('--header <name>', 'Filter to specific header name')
     .addOption(jsonOption)
+    .addHelpText(
+      'after',
+      '\nNote: Without [id], shows headers for the current main document.\n      If the page has navigated, this will be the latest navigation, not the original URL.'
+    )
     .action(async (id: string | undefined, options: NetworkHeadersOptions) => {
       await runCommand(
         async (opts) => {
           const response = await getNetworkHeaders({
             ...(id && { id }),
+            ...(opts.header && { headerName: opts.header }),
+          });
+
+          validateIPCResponse(response);
+
+          if (!response.data) {
+            return {
+              success: false,
+              error: 'No data returned from worker',
+              exitCode: EXIT_CODES.RESOURCE_NOT_FOUND,
+            };
+          }
+
+          return {
+            success: true,
+            data: response.data,
+          };
+        },
+        options,
+        formatNetworkHeaders
+      );
+    });
+
+  networkCmd
+    .command('document')
+    .description('Show main HTML document request details (alias for headers without ID)')
+    .option('--header <name>', 'Filter to specific header name')
+    .addOption(jsonOption)
+    .action(async (options: NetworkHeadersOptions) => {
+      await runCommand(
+        async (opts) => {
+          const response = await getNetworkHeaders({
             ...(opts.header && { headerName: opts.header }),
           });
 

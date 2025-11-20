@@ -37,14 +37,63 @@ const RESOURCE_TYPE_ABBREVIATIONS: Record<string, string> = {
 };
 
 /**
- * Get compact abbreviation for resource type (for token-efficient display).
+ * Rules for inferring resource types from MIME patterns.
+ * Ordered by precedence (first match wins).
+ */
+const MIME_TYPE_RULES: Array<{
+  type: Protocol.Network.ResourceType;
+  match: RegExp;
+}> = [
+  { type: 'Document', match: /text\/html/i },
+  { type: 'Stylesheet', match: /text\/css/i },
+  { type: 'Script', match: /(java|ecma)script/i },
+  { type: 'Image', match: /^image\//i },
+  { type: 'Font', match: /font/i },
+  { type: 'Media', match: /^(video|audio)\//i },
+  { type: 'XHR', match: /json|xml/i },
+];
+
+/**
+ * Infer resource type from MIME type when CDP doesn't provide it.
+ *
+ * @param mimeType - MIME type string (e.g., 'application/json', 'text/html')
+ * @returns Inferred Protocol.Network.ResourceType or undefined
+ */
+function inferResourceTypeFromMime(
+  mimeType: string | undefined
+): Protocol.Network.ResourceType | undefined {
+  if (!mimeType) return undefined;
+  return MIME_TYPE_RULES.find((rule) => rule.match.test(mimeType))?.type;
+}
+
+/**
+ * Format limit hint when data is truncated.
+ *
+ * @param showing - Number of items currently shown
+ * @param total - Total number of items available
+ * @returns Hint string with suggestion to use --last, or empty string if showing all
+ */
+function formatLimitHint(showing: number, total: number): string {
+  if (showing >= total) return '';
+  return ` (showing last ${showing}, use --last ${total} to see all)`;
+}
+
+/**
+ * Get compact abbreviation for resource type.
+ *
+ * Falls back to MIME type inference when CDP doesn't provide resourceType.
  *
  * @param resourceType - CDP ResourceType value
+ * @param mimeType - MIME type for fallback inference
  * @returns 3-4 character abbreviation (e.g., DOC, XHR, SCR)
  */
-function getResourceTypeAbbr(resourceType: Protocol.Network.ResourceType | undefined): string {
-  if (!resourceType) return '???';
-  return RESOURCE_TYPE_ABBREVIATIONS[resourceType] ?? 'UNK';
+function getResourceTypeAbbr(
+  resourceType: Protocol.Network.ResourceType | undefined,
+  mimeType: string | undefined
+): string {
+  const type = resourceType ?? inferResourceTypeFromMime(mimeType);
+  if (!type) return 'OTH';
+  return RESOURCE_TYPE_ABBREVIATIONS[type] ?? 'UNK';
 }
 
 /**
@@ -153,16 +202,20 @@ function formatPreviewCompact(output: BdgOutput, options: PreviewOptions): strin
 
   if (!options.console && output.data.network) {
     if (options.console === undefined || hasNetworkData) {
-      const requests = output.data.network.slice(-lastCount);
-      fmt.text(`NETWORK (${requests.length}/${output.data.network.length}):`);
+      const requests =
+        lastCount === 0 ? output.data.network : output.data.network.slice(-lastCount);
+      const showingCount = requests.length;
+      const totalCount = output.data.network.length;
+      const limitHint = formatLimitHint(showingCount, totalCount);
+      fmt.text(`NETWORK (${showingCount}/${totalCount})${limitHint}:`);
       if (requests.length === 0) {
         fmt.text(`  ${PREVIEW_EMPTY_STATES.NO_DATA}`);
       } else {
         const networkLines = requests.map((req) => {
-          const typeAbbr = getResourceTypeAbbr(req.resourceType);
+          const typeAbbr = getResourceTypeAbbr(req.resourceType, req.mimeType);
           const status = req.status ?? 'pending';
           const url = truncateUrl(req.url, 50);
-          return `[${typeAbbr}] ${status} ${req.method} ${url} [${req.requestId}]`;
+          return `[${req.requestId}] [${typeAbbr}] ${status} ${req.method} ${url}`;
         });
         fmt.list(networkLines, 2);
       }
@@ -172,8 +225,12 @@ function formatPreviewCompact(output: BdgOutput, options: PreviewOptions): strin
 
   if (!options.network && output.data.console) {
     if (options.network === undefined || hasConsoleData) {
-      const messages = output.data.console.slice(-lastCount);
-      fmt.text(`CONSOLE (${messages.length}/${output.data.console.length}):`);
+      const messages =
+        lastCount === 0 ? output.data.console : output.data.console.slice(-lastCount);
+      const showingCount = messages.length;
+      const totalCount = output.data.console.length;
+      const limitHint = formatLimitHint(showingCount, totalCount);
+      fmt.text(`CONSOLE (${showingCount}/${totalCount})${limitHint}:`);
       if (messages.length === 0) {
         fmt.text(`  ${PREVIEW_EMPTY_STATES.NO_DATA}`);
       } else {
@@ -238,10 +295,13 @@ function formatPreviewVerbose(output: BdgOutput, options: PreviewOptions): strin
 
   if (!options.console && output.data.network) {
     if (options.console === undefined || hasNetworkData) {
-      const requests = output.data.network.slice(-lastCount);
-      fmt
-        .text(`Network Requests (last ${requests.length} of ${output.data.network.length})`)
-        .separator('━', 50);
+      const requests =
+        lastCount === 0 ? output.data.network : output.data.network.slice(-lastCount);
+      const title =
+        lastCount === 0
+          ? `Network Requests (all ${requests.length})`
+          : `Network Requests (last ${requests.length} of ${output.data.network.length})`;
+      fmt.text(title).separator('━', 50);
       if (requests.length === 0) {
         fmt.text(PREVIEW_EMPTY_STATES.NO_NETWORK_REQUESTS);
       } else {
@@ -266,10 +326,13 @@ function formatPreviewVerbose(output: BdgOutput, options: PreviewOptions): strin
 
   if (!options.network && output.data.console) {
     if (options.network === undefined || hasConsoleData) {
-      const messages = output.data.console.slice(-lastCount);
-      fmt
-        .text(`Console Messages (last ${messages.length} of ${output.data.console.length})`)
-        .separator('━', 50);
+      const messages =
+        lastCount === 0 ? output.data.console : output.data.console.slice(-lastCount);
+      const title =
+        lastCount === 0
+          ? `Console Messages (all ${messages.length})`
+          : `Console Messages (last ${messages.length} of ${output.data.console.length})`;
+      fmt.text(title).separator('━', 50);
       if (messages.length === 0) {
         fmt.text(PREVIEW_EMPTY_STATES.NO_CONSOLE_MESSAGES);
       } else {

@@ -269,7 +269,7 @@ function handleDescribeMethod(methodName: string): {
       if (similar.length > 0) {
         suggestions.push('');
         suggestions.push('Did you mean:');
-        similar.forEach((name) => suggestions.push(`  • ${name}`));
+        similar.forEach((name) => suggestions.push(`  - ${name}`));
       }
 
       return {
@@ -304,7 +304,7 @@ function handleDescribeMethod(methodName: string): {
     if (similar.length > 0) {
       suggestions.push('');
       suggestions.push('Did you mean:');
-      similar.forEach((name) => suggestions.push(`  • ${name}`));
+      similar.forEach((name) => suggestions.push(`  - ${name}`));
     }
 
     return {
@@ -364,6 +364,7 @@ async function handleExecuteMethod(
   error?: string;
   exitCode?: number;
   errorContext?: Record<string, unknown>;
+  hint?: string;
 }> {
   const normalized = normalizeMethod(methodName);
   if (!normalized) {
@@ -372,7 +373,7 @@ async function handleExecuteMethod(
     if (similar.length > 0) {
       suggestions.push('');
       suggestions.push('Did you mean:');
-      similar.forEach((name) => suggestions.push(`  • ${name}`));
+      similar.forEach((name) => suggestions.push(`  - ${name}`));
     }
 
     return {
@@ -405,11 +406,21 @@ async function handleExecuteMethod(
 
   validateIPCResponse(response);
 
-  return {
+  const result: {
+    success: boolean;
+    data: { method: string; result: unknown };
+    hint?: string;
+  } = {
     success: true,
     data: {
       method: normalized,
       result: response.data?.result,
     },
   };
+
+  if (response.data?.hint) {
+    result.hint = response.data.hint;
+  }
+
+  return result;
 }
