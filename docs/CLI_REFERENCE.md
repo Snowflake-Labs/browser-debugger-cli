@@ -192,6 +192,41 @@ bdg dom eval "document.querySelector('h1').textContent"
 bdg dom eval --json                               # JSON output with full Runtime.evaluate response
 ```
 
+### Form Interaction
+
+Interact with page elements using React-compatible events.
+
+```bash
+# Fill inputs
+bdg dom fill "#username" "admin"
+bdg dom fill "input[type='password']" "secret" --no-blur
+bdg dom fill "#search" "query" --index 1          # Use 1-based index for multiple matches
+
+# Click elements
+bdg dom click "#login-btn"
+bdg dom click "button.submit" --index 2
+
+# Submit forms (smart wait for navigation/network)
+bdg dom submit "#login-form"
+bdg dom submit "#login-form" --wait-network 2000  # Wait 2s for network idle
+bdg dom submit "#login-form" --wait-navigation    # Wait for page navigation
+```
+
+### Screen Capture
+
+Capture screenshots of the current page.
+
+```bash
+# Capture full page (default)
+bdg dom screenshot output.png
+
+# Capture viewport only
+bdg dom screenshot visible.jpg --format jpeg --no-full-page
+
+# Custom quality
+bdg dom screenshot high-res.jpg --format jpeg --quality 100
+```
+
 ## Network Commands
 
 ### HAR Export
@@ -309,6 +344,63 @@ bdg network headers --json > headers.json
 
 # Stop session
 bdg stop
+```
+
+### Cookie Inspection
+
+List cookies for the current page or a specific URL.
+
+```bash
+# List all cookies
+bdg network getCookies
+
+# Filter by URL
+bdg network getCookies --url https://api.example.com
+
+# JSON output
+bdg network getCookies --json
+```
+
+## Console Commands
+
+### Query Console History
+
+Query and filter console logs from the active session history.
+
+```bash
+# Show last 10 messages
+bdg console --last 10
+
+# Filter by type
+bdg console --filter error
+bdg console --filter warning --last 5
+
+# JSON output
+bdg console --json
+```
+
+## CDP Commands
+
+### Protocol Introspection & Execution
+
+Directly execute Chrome DevTools Protocol (CDP) methods and explore the available API surface.
+
+```bash
+# List all available domains
+bdg cdp --list
+
+# List methods in a domain
+bdg cdp Network --list
+
+# Search for methods by keyword
+bdg cdp --search cookie
+
+# Describe a specific method (parameters and return types)
+bdg cdp Network.getCookies --describe
+
+# Execute a method
+bdg cdp Network.getCookies
+bdg cdp Page.navigate --params '{"url": "https://example.com"}'
 ```
 
 ## Maintenance
