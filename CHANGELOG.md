@@ -9,6 +9,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.5] - 2025-11-21
+
+### Added
+
+- **Agent-friendly discovery system** - Machine-readable help and intelligent pattern detection (#68, #69)
+  - `bdg --help --json` - Machine-readable schema with task mappings, decision trees, and runtime state
+  - Pattern detection for common CDP usage that suggests high-level alternatives
+  - 15 task-to-command mappings with CDP fallback options
+  - 5 intent-based decision trees (DOM, Network, Console, Monitoring, Session)
+  - Dynamic runtime state showing command availability
+  - Capabilities summary (53 CDP domains, 300+ methods)
+- **Query cache for index-based DOM access** - Persistent cache enables fast element references (#68)
+  - After `bdg dom query <selector>`, reference elements by index in subsequent commands
+  - Direct index access for inspection: `bdg dom get 0`, `bdg dom a11y describe 0`
+  - File-based cache in `~/.bdg/query-cache.json` persists across CLI invocations
+  - Automatically cleared when starting new queries or ending sessions
+  - Two access patterns documented: direct index (inspection) vs --index flag (interaction)
+- **Enhanced command hints** - Context-aware guidance for better command usage (#68)
+  - Pattern-based hints suggest high-level commands when using verbose CDP
+  - Runtime.evaluate triggers suggest `bdg dom query` for element inspection
+  - Page.captureScreenshot triggers suggest `bdg dom screenshot`
+  - Network.getCookies triggers suggest `bdg network getCookies`
+  - CommandRunner integration for consistent hint display
+- **Resource type indicators in peek** - Visual indicators for network resource types (#68)
+  - Short codes in peek output: IMG (images), DOC (documents), XHR (AJAX), SCR (scripts)
+  - Helps quickly identify resource types during live monitoring
+  - Complements existing `--type` filtering for resource-based queries
+
+### Changed
+
+- **Improved error messages** - Better guidance and actionable suggestions (#68)
+  - Enhanced daemon-not-running errors with clear next steps
+  - Session-not-found errors include start command examples
+  - Invalid argument errors show expected formats
+- **Documentation updates** - Comprehensive agent discoverability documentation (#68)
+  - Added CLAUDE.md section on DOM interaction patterns
+  - Created manual testing guide for agent discovery features
+  - Reorganized agent discoverability docs to focus on unresolved items
+  - Added PAIN_POINTS_RESOLVED.md tracking completed improvements
+
+### Fixed
+
+- **String escaping security issue** - Properly escape backslashes in selector strings (#68)
+  - Fixes CodeQL high-severity warning about incomplete string escaping
+  - Backslashes now escaped before single quotes to prevent bypass
+  - Resolves potential injection in DOM formatter hints
+
+### Performance
+
+- **Optimized HAR endpoint selection** - Prefer current navigation's Document resource (#68)
+  - Smarter default endpoint inference from network data
+  - Improves accuracy of HAR export for SPAs
+
 ## [0.6.4] - 2025-11-20
 
 ### Added
