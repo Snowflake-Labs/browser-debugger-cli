@@ -1,17 +1,22 @@
 # Roadmap: browser-debugger-cli
 
-**Last Updated**: 2025-11-19
-**Current Version**: 0.6.1
+**Last Updated**: 2025-11-20
+**Current Version**: 0.6.4
 **Status**: In active development
 
 ---
 
-## Current Status (v0.6.1 - November 2025)
+## Current Status (v0.6.4 - November 2025)
 
 ### ✅ Recently Completed
 
+**v0.6.4 (2025-11-20)**:
+- HAR 1.2 Export (`bdg network har`) with complete timing data - Issue #65
+- Network headers command (`bdg network headers`) for HTTP header inspection - Issue #67
+- Resource type filtering (`bdg peek --type Document,XHR`) and display - Issue #66, #48
+- Document request capture in network telemetry - Issue #48
+
 **v0.7.0-alpha (2025-11-19)**:
-- HAR 1.2 Export (`bdg network har`) with complete timing data - Issue #61
 - Accessibility Engine Phase 1 & 2 (`bdg dom a11y tree/query/describe`) - Issue #60
 - Semantic output for DOM inspection (70-99% token reduction)
 - A11y tree integration in DOM snapshots
@@ -34,24 +39,33 @@
 
 ### 📋 Priority Queue (Next Up)
 
-**High Priority** (Referenced in archived feedback docs):
-- Issue #48: Document request capture (main HTML document in network telemetry)
-- Issue #49: Network headers command for direct header inspection
-- Issue #50: Security CSP command for CSP analysis
+**High Priority**:
+- Screenshot annotations (`--highlight`, `--annotate`, `--element`) - Visual debugging enhancement
+- Enhanced peek filtering (`--status`, `--method`, `--size`, `--group-by`) - Issue #53
+- Session analysis (`bdg analyze`, `bdg report`) - Issue #54
 - DOM wait command (`bdg dom wait --selector --state --timeout`)
 - Semantic selectors (click by text instead of CSS)
-- Security headers commands (`bdg security headers/csp/cookies`)
+
+**Medium Priority**:
+- Security command suite (`bdg security`) - Issue #55
+- Interactive help and examples - Issue #58
+
+**Low Priority** (nice-to-have):
+- CSP analysis command (`bdg security csp`) - Issue #50
+- Improved error messages with hints - Issue #57
 
 See [`../IMPLEMENTATION_STATUS.md`](../IMPLEMENTATION_STATUS.md) for detailed feature tracking.
 
-### 🎯 Current Focus: M2 - Network Foundation
+### 🎯 Current Focus: M2 - Network Foundation ✅ COMPLETE
 
-**Why M2?** Network telemetry and control commands enable:
-- ✅ HAR export for debugging network issues (Complete)
-- Request/response inspection and replay
-- Complete network data capture (including document requests)
+**Milestone Complete!** M2 Network Foundation delivered:
+- ✅ HAR export for debugging network issues
+- ✅ HTTP headers inspection command
+- ✅ Resource type filtering and classification
+- ✅ Complete network data capture (including document requests)
 
-**Next Up**: Issue #48 (Document request capture)
+**Next Milestone**: M3 - Visual Debugging & Enhanced UX
+**Next Feature**: Screenshot annotations for visual debugging
 **Blockers**: None
 
 ---
