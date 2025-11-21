@@ -5,11 +5,15 @@
  * WHY: Centralized cleanup logic ensures consistent cleanup across error paths and normal shutdown.
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
 import * as fs from 'fs';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 import { getErrorMessage } from '@/connection/errors.js';
-import { createLogger } from '@/ui/logging/index.js';
+import { createLogger, logDebugError } from '@/ui/logging/index.js';
+import { safeRemoveFile } from '@/utils/file.js';
 import { isProcessAlive, killChromeProcess } from '@/utils/process.js';
 
 import { readChromePid, clearChromePid } from './chrome.js';
@@ -58,7 +62,7 @@ function killCachedChromeProcess(reason: string): void {
  *
  * @returns Array of orphaned daemon PIDs
  */
-function findOrphanedDaemons(): number[] {
+async function findOrphanedDaemons(): Promise<number[]> {
   const orphanedPids: number[] = [];
 
   try {
@@ -70,7 +74,7 @@ function findOrphanedDaemons(): number[] {
         ? 'wmic process where "commandline like \'%dist/daemon.js%\'" get processid'
         : 'ps aux | grep -E "node.*dist/daemon\\.js" | grep -v grep';
 
-    const output = execSync(psCommand, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+    const { stdout: output } = await execAsync(psCommand);
 
     const lines = output.trim().split('\n');
 
@@ -104,7 +108,7 @@ function findOrphanedDaemons(): number[] {
       }
     }
   } catch (error) {
-    log.debug(`Failed to find orphaned daemons: ${getErrorMessage(error)}`);
+    logDebugError(log, 'find orphaned daemons', error);
   }
 
   return orphanedPids;
@@ -145,14 +149,10 @@ export function cleanupStaleSession(): boolean {
         return false;
       }
     } catch (error) {
-      log.debug(`Failed to read stale session lock: ${getErrorMessage(error)}`);
+      logDebugError(log, 'read stale session lock', error);
     }
 
-    try {
-      fs.rmSync(lockPath, { force: true });
-    } catch (error) {
-      log.debug(`Failed to remove stale session lock: ${getErrorMessage(error)}`);
-    }
+    safeRemoveFile(lockPath, 'stale session lock', log);
 
     if (!acquireSessionLock()) {
       return false;
@@ -190,29 +190,10 @@ export function cleanupStaleSession(): boolean {
 
     cleanupPidFile();
 
-    try {
-      fs.rmSync(getSessionFilePath('METADATA'), { force: true });
-    } catch (error) {
-      log.debug(`Failed to remove metadata file: ${getErrorMessage(error)}`);
-    }
-
-    try {
-      fs.rmSync(daemonPidPath, { force: true });
-    } catch (error) {
-      log.debug(`Failed to remove daemon PID file: ${getErrorMessage(error)}`);
-    }
-
-    try {
-      fs.rmSync(getSessionFilePath('DAEMON_SOCKET'), { force: true });
-    } catch (error) {
-      log.debug(`Failed to remove daemon socket: ${getErrorMessage(error)}`);
-    }
-
-    try {
-      fs.rmSync(getSessionFilePath('DAEMON_LOCK'), { force: true });
-    } catch (error) {
-      log.debug(`Failed to remove daemon lock: ${getErrorMessage(error)}`);
-    }
+    safeRemoveFile(getSessionFilePath('METADATA'), 'metadata file', log);
+    safeRemoveFile(daemonPidPath, 'daemon PID file', log);
+    safeRemoveFile(getSessionFilePath('DAEMON_SOCKET'), 'daemon socket', log);
+    safeRemoveFile(getSessionFilePath('DAEMON_LOCK'), 'daemon lock', log);
 
     log.info('Stale session cleanup complete');
 
@@ -247,31 +228,12 @@ export function cleanupSession(): void {
   cleanupPidFile();
   releaseSessionLock();
 
-  try {
-    fs.rmSync(getSessionFilePath('METADATA'), { force: true });
-  } catch (error) {
-    log.debug(`Failed to remove metadata file: ${getErrorMessage(error)}`);
-  }
+  safeRemoveFile(getSessionFilePath('METADATA'), 'metadata file', log);
+  safeRemoveFile(getSessionFilePath('DAEMON_PID'), 'daemon PID file', log);
+  safeRemoveFile(getSessionFilePath('DAEMON_SOCKET'), 'daemon socket', log);
+  safeRemoveFile(getSessionFilePath('DAEMON_LOCK'), 'daemon lock', log);
 
-  try {
-    fs.rmSync(getSessionFilePath('DAEMON_PID'), { force: true });
-  } catch (error) {
-    log.debug(`Failed to remove daemon PID file: ${getErrorMessage(error)}`);
-  }
-
-  try {
-    fs.rmSync(getSessionFilePath('DAEMON_SOCKET'), { force: true });
-  } catch (error) {
-    log.debug(`Failed to remove daemon socket: ${getErrorMessage(error)}`);
-  }
-
-  try {
-    fs.rmSync(getSessionFilePath('DAEMON_LOCK'), { force: true });
-  } catch (error) {
-    log.debug(`Failed to remove daemon lock: ${getErrorMessage(error)}`);
-  }
-
-  clearSessionQueryCache();
+  void clearSessionQueryCache();
 }
 
 /**
@@ -355,8 +317,8 @@ export function cleanupStaleDaemonPid(): boolean {
  * }
  * ```
  */
-export function cleanupOrphanedDaemons(): number {
-  const orphanedPids = findOrphanedDaemons();
+export async function cleanupOrphanedDaemons(): Promise<number> {
+  const orphanedPids = await findOrphanedDaemons();
 
   if (orphanedPids.length === 0) {
     log.debug('No orphaned daemon processes found');
@@ -373,7 +335,7 @@ export function cleanupOrphanedDaemons(): number {
       log.info(`Killed orphaned daemon process ${pid}`);
       killedCount++;
     } catch (error) {
-      log.debug(`Failed to kill orphaned daemon ${pid}: ${getErrorMessage(error)}`);
+      logDebugError(log, `kill orphaned daemon ${pid}`, error);
     }
   }
 
