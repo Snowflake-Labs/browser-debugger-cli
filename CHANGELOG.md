@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.6] - 2025-11-21
+
+### Added
+
+- **Keyboard interaction command** (`bdg dom pressKey`) - Send keyboard events to elements (#72)
+  - Support for all common keys: Enter, Tab, Escape, Space, Arrow keys, F1-F12, a-z, 0-9
+  - Modifier key support: shift, ctrl, alt, meta (comma-separated)
+  - `--times` option for repeated key presses
+  - Works with both selectors and cached query indices
+  - Auto-waits for network stability (with `--no-wait` opt-out)
+- **Network stability waiting** - Click and fill commands now wait for network to settle (#72)
+  - Prevents race conditions when actions trigger AJAX requests
+  - `--no-wait` flag to opt-out when immediate return is needed
+- **Direct index support for dom click** - Use 0-based indices from query cache directly (#72)
+
+### Changed
+
+- **Improved `dom get` output** - Shows DOM context (tag, classes, text) when a11y name is missing (#72)
+- **Improved `a11y describe` output** - Includes tag name, CSS classes, and text preview (#72)
+- **Smart routing for `bdg dom a11y`** - Automatically routes to appropriate subcommand based on input type (#72)
+- **Better filter feedback** - Shows helpful message when `--type` filter matches nothing (#72)
+- **Enhanced URL validation hints** - Better error messages for shell quoting issues (#72)
+
+### Fixed
+
+- **Reject invalid `--last 0` value** - The peek command now validates that N >= 1
+- **Resolved element target helper** - Extracted shared logic to reduce ~70 lines of duplicate code (#72)
+
 ## [0.6.5] - 2025-11-21
 
 ### Added
