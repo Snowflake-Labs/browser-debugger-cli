@@ -4,9 +4,16 @@
 
 import type { Command } from 'commander';
 
-import { fillElement, clickElement } from '@/commands/dom/formFillHelpers.js';
+import {
+  fillElement,
+  clickElement,
+  pressKeyElement,
+  waitForActionStability,
+  type PressKeyResult,
+} from '@/commands/dom/formFillHelpers.js';
 import { submitForm } from '@/commands/dom/formSubmitHelpers.js';
 import type { SubmitResult } from '@/commands/dom/formSubmitHelpers.js';
+import { resolveElementTarget } from '@/commands/dom/helpers.js';
 import type { FillResult, ClickResult } from '@/commands/dom/reactEventHelpers.js';
 import { runCommand } from '@/commands/shared/CommandRunner.js';
 import { jsonOption } from '@/commands/shared/commonOptions.js';
@@ -88,22 +95,34 @@ export function registerFormInteractionCommands(program: Command): void {
 
   domCommand
     .command('fill')
-    .description('Fill a form field with a value (React-compatible)')
-    .argument('<selector>', 'CSS selector for the element')
+    .description('Fill a form field with a value (React-compatible, waits for stability)')
+    .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
     .argument('<value>', 'Value to fill')
     .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
     .option('--no-blur', 'Do not blur after filling (keeps focus on element)')
+    .option('--no-wait', 'Skip waiting for network stability after fill')
     .addOption(jsonOption)
-    .action(async (selector: string, value: string, options: FillCommandOptions) => {
+    .action(async (selectorOrIndex: string, value: string, options: FillCommandOptions) => {
       await runCommand(
         async () => {
+          const target = await resolveElementTarget(selectorOrIndex, options.index);
+
+          if (!target.success) {
+            return {
+              success: false,
+              error: target.error ?? 'Failed to resolve element target',
+              exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
+              suggestion: target.suggestion,
+            };
+          }
+
           return await withCDPConnection(async (cdp) => {
             const fillOptions = filterDefined({
-              index: options.index,
+              index: target.index,
               blur: options.blur,
             }) as { index?: number; blur?: boolean };
 
-            const result = await fillElement(cdp, selector, value, fillOptions);
+            const result = await fillElement(cdp, target.selector, value, fillOptions);
 
             if (!result.success) {
               return {
@@ -113,6 +132,10 @@ export function registerFormInteractionCommands(program: Command): void {
                   ? EXIT_CODES.RESOURCE_NOT_FOUND
                   : EXIT_CODES.INVALID_ARGUMENTS,
               };
+            }
+
+            if (options.wait !== false) {
+              await waitForActionStability(cdp);
             }
 
             return { success: true, data: result };
@@ -125,19 +148,31 @@ export function registerFormInteractionCommands(program: Command): void {
 
   domCommand
     .command('click')
-    .description('Click an element')
-    .argument('<selector>', 'CSS selector for the element')
+    .description('Click an element and wait for stability (accepts selector or index)')
+    .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
     .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
+    .option('--no-wait', 'Skip waiting for network stability after click')
     .addOption(jsonOption)
-    .action(async (selector: string, options: ClickCommandOptions) => {
+    .action(async (selectorOrIndex: string, options: ClickCommandOptions) => {
       await runCommand(
         async () => {
+          const target = await resolveElementTarget(selectorOrIndex, options.index);
+
+          if (!target.success) {
+            return {
+              success: false,
+              error: target.error ?? 'Failed to resolve element target',
+              exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
+              suggestion: target.suggestion,
+            };
+          }
+
           return await withCDPConnection(async (cdp) => {
             const clickOptions = filterDefined({
-              index: options.index,
+              index: target.index,
             }) as { index?: number };
 
-            const result = await clickElement(cdp, selector, clickOptions);
+            const result = await clickElement(cdp, target.selector, clickOptions);
 
             if (!result.success) {
               return {
@@ -147,6 +182,10 @@ export function registerFormInteractionCommands(program: Command): void {
                   ? EXIT_CODES.RESOURCE_NOT_FOUND
                   : EXIT_CODES.INVALID_ARGUMENTS,
               };
+            }
+
+            if (options.wait !== false) {
+              await waitForActionStability(cdp);
             }
 
             return { success: true, data: result };
@@ -160,18 +199,29 @@ export function registerFormInteractionCommands(program: Command): void {
   domCommand
     .command('submit')
     .description('Submit a form by clicking submit button and waiting for completion')
-    .argument('<selector>', 'CSS selector for the submit button')
+    .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
     .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
     .option('--wait-navigation', 'Wait for page navigation after submit')
     .option('--wait-network <ms>', 'Wait for network idle after submit (milliseconds)', '1000')
     .option('--timeout <ms>', 'Maximum time to wait (milliseconds)', '10000')
     .addOption(jsonOption)
-    .action(async (selector: string, options: SubmitCommandOptions) => {
+    .action(async (selectorOrIndex: string, options: SubmitCommandOptions) => {
       await runCommand(
         async () => {
+          const target = await resolveElementTarget(selectorOrIndex, options.index);
+
+          if (!target.success) {
+            return {
+              success: false,
+              error: target.error ?? 'Failed to resolve element target',
+              exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
+              suggestion: target.suggestion,
+            };
+          }
+
           return await withCDPConnection(async (cdp) => {
             const submitOptions = filterDefined({
-              index: options.index,
+              index: target.index,
               waitNavigation: options.waitNavigation,
               waitNetwork: parseInt(options.waitNetwork, 10),
               timeout: parseInt(options.timeout, 10),
@@ -182,7 +232,7 @@ export function registerFormInteractionCommands(program: Command): void {
               timeout?: number;
             };
 
-            const result = await submitForm(cdp, selector, submitOptions);
+            const result = await submitForm(cdp, target.selector, submitOptions);
 
             if (!result.success) {
               return {
@@ -203,6 +253,61 @@ export function registerFormInteractionCommands(program: Command): void {
         formatSubmitOutput
       );
     });
+
+  domCommand
+    .command('pressKey')
+    .description('Press a key on an element (for Enter-to-submit, keyboard navigation)')
+    .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
+    .argument('<key>', 'Key to press (Enter, Tab, Escape, Space, ArrowUp, etc.)')
+    .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
+    .option('--times <n>', 'Press key multiple times (default: 1)', parseInt)
+    .option('--modifiers <mods>', 'Modifier keys: shift,ctrl,alt,meta (comma-separated)')
+    .option('--no-wait', 'Skip waiting for network stability after key press')
+    .addOption(jsonOption)
+    .action(async (selectorOrIndex: string, key: string, options: PressKeyCommandOptions) => {
+      await runCommand(
+        async () => {
+          const target = await resolveElementTarget(selectorOrIndex, options.index);
+
+          if (!target.success) {
+            return {
+              success: false,
+              error: target.error ?? 'Failed to resolve element target',
+              exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
+              suggestion: target.suggestion,
+            };
+          }
+
+          return await withCDPConnection(async (cdp) => {
+            const pressKeyOptions = filterDefined({
+              index: target.index,
+              times: options.times,
+              modifiers: options.modifiers,
+            }) as { index?: number; times?: number; modifiers?: string };
+
+            const result = await pressKeyElement(cdp, target.selector, key, pressKeyOptions);
+
+            if (!result.success) {
+              return {
+                success: false,
+                error: result.error ?? 'Failed to press key',
+                exitCode: result.error?.includes('not found')
+                  ? EXIT_CODES.RESOURCE_NOT_FOUND
+                  : EXIT_CODES.INVALID_ARGUMENTS,
+              };
+            }
+
+            if (options.wait !== false) {
+              await waitForActionStability(cdp);
+            }
+
+            return { success: true, data: result };
+          });
+        },
+        options,
+        formatPressKeyOutput
+      );
+    });
 }
 
 /**
@@ -211,6 +316,7 @@ export function registerFormInteractionCommands(program: Command): void {
 interface FillCommandOptions {
   index?: number;
   blur: boolean;
+  wait: boolean;
   json?: boolean;
 }
 
@@ -219,6 +325,7 @@ interface FillCommandOptions {
  */
 interface ClickCommandOptions {
   index?: number;
+  wait: boolean;
   json?: boolean;
 }
 
@@ -230,6 +337,17 @@ interface SubmitCommandOptions {
   waitNavigation?: boolean;
   waitNetwork: string;
   timeout: string;
+  json?: boolean;
+}
+
+/**
+ * Options for pressKey command.
+ */
+interface PressKeyCommandOptions {
+  index?: number;
+  times?: number;
+  modifiers?: string;
+  wait: boolean;
   json?: boolean;
 }
 
@@ -332,6 +450,42 @@ function formatSubmitOutput(result: SubmitResult): string {
     'bdg console --last 5             Check console messages',
     'bdg status                       Check session state',
   ]);
+
+  return fmt.build();
+}
+
+/**
+ * Format pressKey command output for human-readable display.
+ *
+ * @param result - Press key result
+ * @returns Formatted string
+ */
+function formatPressKeyOutput(result: PressKeyResult): string {
+  const fmt = new OutputFormatter();
+
+  fmt.text('✓ Key Pressed');
+  fmt.blank();
+
+  const details: [string, string][] = [
+    ['Key', result.key ?? 'unknown'],
+    ['Selector', result.selector ?? 'unknown'],
+    ['Element Type', result.elementType ?? 'unknown'],
+  ];
+
+  if (result.times && result.times > 1) {
+    details.push(['Times', result.times.toString()]);
+  }
+
+  if (result.modifiers && result.modifiers > 0) {
+    const mods: string[] = [];
+    if (result.modifiers & 1) mods.push('Shift');
+    if (result.modifiers & 2) mods.push('Ctrl');
+    if (result.modifiers & 4) mods.push('Alt');
+    if (result.modifiers & 8) mods.push('Meta');
+    details.push(['Modifiers', mods.join('+')]);
+  }
+
+  fmt.keyValueList(details, 15);
 
   return fmt.build();
 }

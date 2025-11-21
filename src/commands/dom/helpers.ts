@@ -14,6 +14,7 @@ import type {
   ScreenshotResult,
   DomGetOptions,
   ScreenshotOptions,
+  DomContext,
 } from '@/types/dom.js';
 import { CommandError } from '@/ui/errors/index.js';
 import { createLogger } from '@/ui/logging/index.js';
@@ -22,7 +23,109 @@ import { EXIT_CODES } from '@/utils/exitCodes.js';
 
 const log = createLogger('dom');
 
-export type { DomQueryResult, DomGetResult, ScreenshotResult, DomGetOptions, ScreenshotOptions };
+/**
+ * Successful result of resolving a selector or index argument.
+ */
+export interface ElementTargetSuccess {
+  /** Resolution succeeded */
+  success: true;
+  /** CSS selector to use */
+  selector: string;
+  /** 1-based index for selector (if resolved from cached query) */
+  index?: number | undefined;
+}
+
+/**
+ * Failed result of resolving a selector or index argument.
+ */
+export interface ElementTargetFailure {
+  /** Resolution failed */
+  success: false;
+  /** Error message */
+  error: string;
+  /** Exit code for the error */
+  exitCode: number;
+  /** Suggestion for fixing the error */
+  suggestion?: string | undefined;
+}
+
+/**
+ * Result of resolving a selector or index argument to an element target.
+ * Discriminated union that guarantees selector exists when success is true.
+ */
+export type ElementTargetResult = ElementTargetSuccess | ElementTargetFailure;
+
+/**
+ * Resolve a selectorOrIndex argument to an element target.
+ *
+ * Handles the common pattern of accepting either:
+ * - A CSS selector string (used directly)
+ * - A numeric index (resolved from cached query results)
+ *
+ * @param selectorOrIndex - CSS selector or numeric index from query results
+ * @param explicitIndex - Optional explicit --index flag value (1-based)
+ * @returns Resolution result with selector and optional index
+ *
+ * @example
+ * ```typescript
+ * const target = await resolveElementTarget('button');
+ * // { success: true, selector: 'button' }
+ *
+ * const target = await resolveElementTarget('0');
+ * // { success: true, selector: '.cached-selector', index: 1 }
+ * ```
+ */
+export async function resolveElementTarget(
+  selectorOrIndex: string,
+  explicitIndex?: number
+): Promise<ElementTargetResult> {
+  const isNumericIndex = /^\d+$/.test(selectorOrIndex);
+
+  if (isNumericIndex) {
+    const { getSessionQueryCache } = await import('@/session/queryCache.js');
+    const cachedQuery = getSessionQueryCache();
+
+    if (!cachedQuery) {
+      return {
+        success: false,
+        error: 'No cached query results found',
+        exitCode: EXIT_CODES.INVALID_ARGUMENTS,
+        suggestion: 'Run "bdg dom query <selector>" first to generate indexed results',
+      };
+    }
+
+    const index = parseInt(selectorOrIndex, 10);
+    if (index < 0 || index >= cachedQuery.nodes.length) {
+      return {
+        success: false,
+        error: `Index ${index} out of range (found ${cachedQuery.nodes.length} elements)`,
+        exitCode: EXIT_CODES.INVALID_ARGUMENTS,
+        suggestion: `Use an index between 0 and ${cachedQuery.nodes.length - 1}`,
+      };
+    }
+
+    return {
+      success: true,
+      selector: cachedQuery.selector,
+      index: index + 1,
+    };
+  }
+
+  return {
+    success: true,
+    selector: selectorOrIndex,
+    index: explicitIndex,
+  };
+}
+
+export type {
+  DomQueryResult,
+  DomGetResult,
+  ScreenshotResult,
+  DomGetOptions,
+  ScreenshotOptions,
+  DomContext,
+};
 
 /**
  * Maximum concurrent CDP calls for DOM operations.
@@ -121,6 +224,61 @@ export async function queryDOMElements(selector: string): Promise<DomQueryResult
     count: nodes.length,
     nodes,
   };
+}
+
+/**
+ * Fetch DOM context (tag, classes, text preview) for a node by its nodeId.
+ *
+ * Used to enrich semantic output when a11y name is missing.
+ *
+ * @param nodeId - CDP node ID
+ * @returns DOM context with tag, classes, and text preview
+ */
+export async function getDomContext(nodeId: number): Promise<DomContext | null> {
+  try {
+    await callCDP('DOM.enable', {});
+
+    const descResponse = await callCDP('DOM.describeNode', { nodeId });
+    const descResult = descResponse.data?.result as Protocol.DOM.DescribeNodeResponse | undefined;
+    const nodeDesc = descResult?.node;
+
+    if (!nodeDesc) {
+      return null;
+    }
+
+    const attributes: Record<string, string> = {};
+    if (nodeDesc.attributes) {
+      for (let i = 0; i < nodeDesc.attributes.length; i += 2) {
+        const key = nodeDesc.attributes[i];
+        const value = nodeDesc.attributes[i + 1];
+        if (key !== undefined && value !== undefined) {
+          attributes[key] = value;
+        }
+      }
+    }
+
+    const classes = attributes['class']?.split(/\s+/).filter((c) => c.length > 0);
+    const tag = nodeDesc.nodeName.toLowerCase();
+
+    const htmlResponse = await callCDP('DOM.getOuterHTML', { nodeId });
+    const htmlResult = htmlResponse.data?.result as Protocol.DOM.GetOuterHTMLResponse | undefined;
+    const outerHTML = htmlResult?.outerHTML ?? '';
+
+    const textContent = outerHTML
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const preview = textContent.slice(0, 80) + (textContent.length > 80 ? '...' : '');
+
+    const context: DomContext = { tag };
+    if (classes && classes.length > 0) context.classes = classes;
+    if (preview) context.preview = preview;
+
+    return context;
+  } catch (error) {
+    log.debug(`Failed to get DOM context for nodeId ${nodeId}: ${String(error)}`);
+    return null;
+  }
 }
 
 /**
