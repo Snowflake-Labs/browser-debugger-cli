@@ -107,8 +107,23 @@ export const DECISION_TREES: Record<string, DecisionTree> = {
     intent: 'Inspect console logs and messages',
     steps: [
       {
-        question: 'Need to query/filter console logs?',
-        yesCommand: 'console query',
+        question: 'Need current page errors/warnings with deduplication?',
+        yesCommand: 'console',
+        noAction: 'next',
+      },
+      {
+        question: 'Need messages from all page loads (history)?',
+        yesCommand: 'console --history',
+        noAction: 'next',
+      },
+      {
+        question: 'Need to stream console messages in real-time?',
+        yesCommand: 'console --follow',
+        noAction: 'next',
+      },
+      {
+        question: 'Need all messages chronologically?',
+        yesCommand: 'console --list',
         noAction: 'next',
       },
       {

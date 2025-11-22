@@ -218,8 +218,21 @@ export type NetworkHarCommandOptions = BaseOptions & { outputFile?: string };
 /** Options for network headers command */
 export type NetworkHeadersCommandOptions = BaseOptions & { header?: string };
 
-/** Options for console command (last has default 0 via Commander) */
-export type ConsoleCommandOptions = BaseOptions & { last: number; filter?: string };
+/**
+ * Options for console command.
+ * Supports smart summary (default), list view (--list), and streaming (--follow).
+ * By default shows only current navigation; use --history for all.
+ */
+export interface ConsoleCommandOptions extends BaseOptions {
+  /** Show last N messages (0 = all, default: 100) */
+  last: number;
+  /** List all messages chronologically (default: smart summary) */
+  list?: boolean;
+  /** Stream console messages in real-time */
+  follow?: boolean;
+  /** Show messages from all page loads (default: current only) */
+  history?: boolean;
+}
 
 /**
  * Options for preview display.

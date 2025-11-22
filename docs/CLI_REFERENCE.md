@@ -391,21 +391,40 @@ bdg network getCookies --json
 
 ## Console Commands
 
-### Query Console History
+### Smart Console Inspection
 
-Query and filter console logs from the active session history.
+Inspect console messages with smart error/warning prioritization and deduplication.
 
 ```bash
-# Show last 10 messages
-bdg console --last 10
+# Smart summary (default) - current page, errors/warnings deduplicated
+bdg console
 
-# Filter by type
-bdg console --filter error
-bdg console --filter warning --last 5
+# Show messages from all page loads (not just current)
+bdg console --history
+bdg console -H
 
-# JSON output
+# List all messages chronologically
+bdg console --list
+bdg console -l
+
+# Limit to last N messages
+bdg console --last 50
+
+# Stream console messages in real-time
+bdg console --follow
+bdg console -f
+
+# JSON output with summary statistics
 bdg console --json
 ```
+
+**Default behavior:**
+- Shows messages from **current page load only** (most recent navigation)
+- Errors deduplicated with occurrence count and source location
+- Warnings listed with source location
+- Summary count of info/debug messages
+
+Use `--history` to see messages from all page loads during the session.
 
 ## CDP Commands
 
