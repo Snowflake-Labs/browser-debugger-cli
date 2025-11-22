@@ -11,8 +11,8 @@ Chrome DevTools Protocol in your terminal. Self-documenting CDP access with disc
 
 | | bdg | Puppeteer/Playwright | Chrome DevTools MCP |
 |---|-----|---------------------|---------------------|
-| **CDP coverage** | ✅ All 300+ methods | ⚠️ Via CDPSession API | ⚠️ 28 curated tools |
-| **Self-documenting** | ✅ Built-in introspection | ❌ External docs | ❌ Fixed descriptions |
+| **CDP coverage** | ✅ All 644 methods | ⚠️ Via CDPSession API | ⚠️ 28 curated tools |
+| **Introspection** | ✅ Built-in | ❌ External docs | ❌ Fixed descriptions |
 | **Discovery** | ✅ Search methods by keyword | ❌ Know what you need | ❌ Browse tool list |
 | **Interface** | ✅ CLI, immediate | ❌ Write code first | ❌ MCP server + client |
 | **Token efficient** | ✅ Semantic a11y (70-99% reduction) | ❌ Raw HTML | ❌ Verbose responses |
@@ -47,7 +47,7 @@ bdg stop                           # End session
 
 ## Current State
 
-**Raw CDP access is complete.** All 300+ protocol methods work now. High-level wrappers (`bdg dom`, `bdg network`) are being added for common operations. See [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands) for full reference.
+**Raw CDP access is complete.** All 644 protocol methods (53 domains) work now. High-level wrappers (`bdg dom`, `bdg network`) are being added for common operations. See [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands) for full reference.
 
 ## Agent Discovery Pattern
 
@@ -71,6 +71,8 @@ bdg cdp --search cookie                     # 14 results
 - [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands)
 - [For AI Agents](https://github.com/szymdzum/browser-debugger-cli/wiki/For-AI-Agents)
 - [Recipes](https://github.com/szymdzum/browser-debugger-cli/wiki/Recipes)
+- [Quick Reference](https://github.com/szymdzum/browser-debugger-cli/wiki/Quick-Reference)
+- [Architecture](https://github.com/szymdzum/browser-debugger-cli/wiki/Architecture)
 - [Troubleshooting](https://github.com/szymdzum/browser-debugger-cli/wiki/Troubleshooting)
 
 ## Design Principles
