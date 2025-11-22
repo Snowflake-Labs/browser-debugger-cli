@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.7] - 2025-11-22
+
+### Fixed
+
+- **Subcommand help output** - `--help --json` now returns focused command info instead of full tool structure (#84)
+- **Graceful degradation for dom get** - Handle accessibility API unavailability gracefully (#82)
+- **Stale query cache detection** - Detect and clear stale query cache after page navigation (#74)
+
+### Changed
+
+- **Improved cache management** - Better DOM element resolution and cache management architecture (#79)
+- **Consolidated cleanup logic** - Improved type safety in cleanup state and type guards (#77)
+- **Removed unused exports** - Clean up unused exports identified by knip (#80)
+- **Documentation updates** - Slimmer README with Wiki links, updated CDP method count to 644
+
 ## [0.6.6] - 2025-11-21
 
 ### Added
