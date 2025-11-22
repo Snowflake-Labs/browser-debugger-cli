@@ -12,7 +12,7 @@ Chrome DevTools Protocol in your terminal. Self-documenting CDP access with disc
 | | bdg | Puppeteer/Playwright | Chrome DevTools MCP |
 |---|-----|---------------------|---------------------|
 | **CDP coverage** | ✅ All 300+ methods | ⚠️ Via CDPSession API | ⚠️ 28 curated tools |
-| **Self-documenting** | ✅ `--list`, `--search`, `--describe` | ❌ External docs | ❌ Fixed descriptions |
+| **Self-documenting** | ✅ Built-in introspection | ❌ External docs | ❌ Fixed descriptions |
 | **Discovery** | ✅ Search methods by keyword | ❌ Know what you need | ❌ Browse tool list |
 | **Interface** | ✅ CLI, immediate | ❌ Write code first | ❌ MCP server + client |
 | **Token efficient** | ✅ Semantic a11y (70-99% reduction) | ❌ Raw HTML | ❌ Verbose responses |
@@ -45,6 +45,10 @@ bdg dom query "button"             # High-level helpers
 bdg stop                           # End session
 ```
 
+## Current State
+
+**Raw CDP access is complete.** All 300+ protocol methods work now. High-level wrappers (`bdg dom`, `bdg network`) are being added for common operations. See [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands) for full reference.
+
 ## Agent Discovery Pattern
 
 ```bash
@@ -57,11 +61,6 @@ bdg cdp Network.getCookies                  # Execute
 # Search across all domains
 bdg cdp --search screenshot                 # Find relevant methods
 bdg cdp --search cookie                     # 14 results
-
-# Semantic DOM inspection (Wikipedia example)
-bdg https://en.wikipedia.org/wiki/Main_Page
-bdg dom query "a"                           # Find all links
-bdg dom get 0                               # [Link] "Main page" (inferred from DOM)
 ```
 
 ## Documentation
