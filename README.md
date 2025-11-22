@@ -5,18 +5,14 @@
 [![Security](https://github.com/szymdzum/browser-debugger-cli/actions/workflows/security.yml/badge.svg)](https://github.com/szymdzum/browser-debugger-cli/actions/workflows/security.yml)
 [![npm downloads](https://img.shields.io/npm/dt/browser-debugger-cli?color=blue)](https://www.npmjs.com/package/browser-debugger-cli)
 
-Chrome DevTools Protocol in your terminal. Self-documenting CDP access with discovery, search, and introspection. **Designed for AI agents** and developers who want direct browser control without framework overhead.
+Chrome DevTools Protocol in your terminal. Opens a persistent connection to Chrome where commands can be executed sequentially via Unix pipes. **Designed for AI agents** and developers who want direct browser control without framework overhead.
 
 ## Why bdg?
 
-| | bdg | Puppeteer/Playwright | Chrome DevTools MCP |
-|---|-----|---------------------|---------------------|
-| **CDP coverage** | ✅ All 644 methods | ⚠️ Via CDPSession API | ⚠️ 28 curated tools |
-| **Introspection** | ✅ Built-in | ❌ External docs | ❌ Fixed descriptions |
-| **Discovery** | ✅ Search methods by keyword | ❌ Know what you need | ❌ Browse tool list |
-| **Interface** | ✅ CLI, immediate | ❌ Write code first | ❌ MCP server + client |
-| **Token efficient** | ✅ Semantic a11y (70-99% reduction) | ❌ Raw HTML | ❌ Verbose responses |
-| **Unix philosophy** | ✅ Pipes, jq, composable | ❌ Programmatic only | ❌ Protocol-based |
+- **Raw CDP access** - All [644 protocol methods](https://chromedevtools.github.io/devtools-protocol/) available directly
+- **Token efficient** - No overhead from MCP tool definitions; progressive discovery loads only what's needed
+- **Self-correcting** - Errors clearly exposed with semantic exit codes and suggestions
+- **Composable** - Unix philosophy: pipes, jq, shell scripts work naturally
 
 **When to use alternatives:**
 - **Puppeteer/Playwright**: Complex multi-step scripts, mature testing ecosystem
