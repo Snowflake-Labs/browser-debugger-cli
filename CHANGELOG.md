@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.8] - 2025-11-22
+
+### Added
+
+- **Smart console command** (`bdg console`) - Intelligent console message inspection (#87)
+  - Default view shows current page only with error/warning prioritization
+  - Deduplication groups repeated messages with occurrence counts
+  - Stack traces with source locations (file:line:column)
+  - `--history` flag to see messages from all page loads
+  - `--list` flag for chronological view with navigation markers
+  - `--follow` flag for real-time streaming
+  - JSON output with summary statistics
+- **Navigation tracking** - Console messages tagged with `navigationId` for page load awareness
+  - Visual "Page Reload" markers in `--list` view when using `--history`
+  - Automatic filtering to current navigation by default
+- **RemoteObject formatting** (`src/telemetry/remoteObject.ts`) - Rich console argument serialization
+  - Handles objects, arrays, errors, and primitives
+  - Uses CDP preview data for accurate representation
+- **String utilities** (`src/utils/strings.ts`) - Shared text truncation helper
+
+### Changed
+
+- **Console output format** - Problem-focused summary replaces simple list
+  - Errors shown first with source locations and stack traces
+  - Warnings grouped separately
+  - Info/debug/other summarized with counts
+- **Worker command registry** - Now includes `navigationId` in console message responses
+- **Documentation updates** - CLI reference, decision trees, and task mappings updated
+
 ## [0.6.7] - 2025-11-22
 
 ### Fixed
