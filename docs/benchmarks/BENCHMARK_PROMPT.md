@@ -6,7 +6,7 @@
 
 ## Overview
 
-This benchmark evaluates browser automation tools across **5 real-world scenarios** on live websites. It measures:
+This benchmark evaluates browser automation tools across **3 real-world scenarios** on live websites. It measures:
 1. **Command/tool efficiency** - How many operations to complete a task
 2. **Token efficiency** - Output verbosity and context window impact
 3. **Discovery patterns** - How agents find and interact with elements
@@ -28,7 +28,7 @@ Before running this benchmark:
 
 ## Test Suite
 
-Execute all 5 tests in order. Record:
+Execute all 3 tests in order. Record:
 - Commands/tool calls required
 - Token counts (input + output)
 - Success/failure status
@@ -125,73 +125,6 @@ Execute all 5 tests in order. Record:
 
 ---
 
-## Test 4: MDN Web Docs
-**Difficulty:** Medium
-**URL:** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
-**Goal:** Extract documentation structure and code samples
-
-### Tasks
-1. **Navigate** - Load MDN Array reference page
-2. **Get page title** - Extract via JavaScript evaluation
-3. **Find code blocks** - Count all `<pre>` or code example elements
-4. **Extract first example** - Get text content of first code sample
-5. **Query headings** - List all section headings (Methods, Properties, etc.)
-6. **Check navigation** - Get accessibility tree for sidebar navigation
-7. **Click method link** - Navigate to a method (e.g., `filter()`)
-8. **Detect navigation type** - Same page (hash) or new page load?
-9. **Check for service workers** - Are service workers registered?
-10. **Get stylesheets** - List all CSS file URLs
-11. **Stop session**
-
-### Expected Results
-- 20-40 code examples
-- Section headings: "Constructor", "Static methods", "Instance methods"
-- Navigation is typically in-page (hash change)
-- 5-10 stylesheet links
-
-### Scoring Criteria
-- **Commands:** Target <10
-- **Tokens:** Target <4,000
-- **Code extraction:** Can agent parse `<pre>` vs `<code>` differences?
-- **Navigation detection:** Can agent distinguish same-page vs new-page?
-
----
-
-## Test 5: Reddit Thread
-**Difficulty:** Hard
-**URL:** https://www.reddit.com/r/programming/top/?t=week
-**Goal:** Analyze post structure and comment interactions
-
-### Tasks
-1. **Navigate** - Load r/programming top posts (week)
-2. **Check for CAPTCHA** - Is "Prove your humanity" challenge shown?
-3. **Count posts** - If accessible, how many post cards visible?
-4. **Get post metadata** - Extract score (karma) of first post
-5. **Find vote buttons** - Count upvote/downvote buttons (may be in Shadow DOM)
-6. **Click first post** - Navigate to comments
-7. **Count comments** - How many comment elements?
-8. **Analyze nesting** - What's the maximum comment depth/nesting level?
-9. **Get accessibility tree** - Query buttons by role (reply, share, etc.)
-10. **Monitor network** - What API calls were made? (e.g., `/api/...`)
-11. **Check cookies** - How many cookies set? Any tracking?
-12. **Stop session**
-
-### Expected Results
-- May be blocked by CAPTCHA (depends on IP/session)
-- 20-30 posts if accessible
-- 50-200 comments (varies)
-- Max nesting: 2-4 levels
-- 10-20 cookies
-
-### Scoring Criteria
-- **Commands:** Target <10
-- **Tokens:** Target <5,000
-- **Shadow DOM:** Can agent access elements inside Shadow DOM?
-- **Dynamic content:** Can agent handle lazy-loaded comments?
-- **API detection:** Can agent correlate UI actions with network calls?
-
----
-
 ## Scoring Rubric
 
 ### 1. Command Efficiency (0-25 points)
@@ -245,8 +178,6 @@ Fill out this template after running all tests:
 | HN Comments | | | ☐ ☑ | | |
 | CodePen | | | ☐ ☑ | | |
 | Amazon | | | ☐ ☑ | | |
-| MDN Docs | | | ☐ ☑ | | |
-| Reddit | | | ☐ ☑ | | |
 
 ### Scoring
 
