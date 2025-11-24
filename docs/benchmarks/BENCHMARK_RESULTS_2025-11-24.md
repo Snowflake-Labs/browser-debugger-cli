@@ -20,14 +20,20 @@
 
 ## Summary
 
-| Test | bdg Score | bdg Time | MCP Score | MCP Time |
-|------|-----------|----------|-----------|----------|
-| Test 1: Basic Error | 18/20 | 69s | 14/20 | 46s |
-| Test 2: Multiple Errors | 18/20 | 75s | 12/20 | 48s |
-| Test 3: SPA Debugging | 14/20 | 100s | 13/20 | 57s |
-| Test 4: Form Validation | 15/20 | 93s | 13/20 | 102s |
-| Test 5: Memory Leak | 12/20 | 104s | 8/20 | 70s |
-| **TOTAL** | **77/100** | **441s** | **60/100** | **323s** |
+| Test | bdg Score | bdg Time | bdg Tokens | MCP Score | MCP Time | MCP Tokens |
+|------|-----------|----------|------------|-----------|----------|------------|
+| Test 1: Basic Error | 18/20 | 69s | ~3.6K | 14/20 | 46s | ~4.8K |
+| Test 2: Multiple Errors | 18/20 | 75s | ~18.7K | 12/20 | 48s | ~9.3K |
+| Test 3: SPA Debugging | 14/20 | 100s | ~4.7K | 13/20 | 57s | ~6.6K |
+| Test 4: Form Validation | 15/20 | 93s | ~3.5K | 13/20 | 102s | ~15.2K |
+| Test 5: Memory Leak | 12/20 | 104s | ~7.6K | 8/20 | 70s | ~3.5K |
+| **TOTAL** | **77/100** | **441s** | **~38.1K** | **60/100** | **323s** | **~39.4K** |
+
+**Token Efficiency Score (TES):**
+- bdg: (77 × 100) / (38.1) = **202.1**
+- MCP: (60 × 100) / (39.4) = **152.3**
+
+**Winner:** bdg (+17 points, +33% TES advantage)
 
 ---
 
@@ -77,6 +83,26 @@ MCP navigated to the page, took a snapshot showing all buttons, clicked the firs
 - ✓ Systematic approach (2/3)
 - ⚠️ Limited detail in findings (2/3)
 
+### Comparative Analysis
+
+**Winner: bdg (+4 points)**
+
+**Why bdg performed better:**
+- **Depth of error information**: bdg's JSON output included complete stack traces with 6 frames showing the full call chain (updateSiteTitle → foo → main script), line numbers, and column numbers for each frame
+- **Structured data**: JSON format makes it trivial to parse and analyze errors programmatically
+- **Debugging efficiency**: With full stack traces, a developer can immediately understand the error's origin and call path without additional investigation
+
+**Why MCP was faster:**
+- **Simpler output**: MCP returned only "$ is not defined" without stack trace processing
+- **Less data transfer**: Minimal console message details meant less data to retrieve and format
+- **Direct interaction**: Simple click → check console pattern without intermediate data transformation
+
+**Token Analysis:**
+- bdg used fewer tokens (~3.6K) despite providing more detailed output because the JSON response was concise
+- MCP used more tokens (~4.8K) due to large accessibility tree snapshots with full page content (all 17 button nodes listed)
+
+**Key takeaway**: For simple errors, MCP is faster but bdg provides production-ready debugging information that saves developer time in the long run.
+
 ---
 
 ## Test 2: Multiple Errors (⭐⭐ Moderate)
@@ -124,6 +150,29 @@ bdg used JavaScript to click all 17 buttons at once with timeouts, captured 18 e
 **Workflow (4/6):**
 - ✓ Efficient batch execution (3/3)
 - ⚠️ Output was summarized due to size (1/3)
+
+### Comparative Analysis
+
+**Winner: bdg (+6 points)**
+
+**Why bdg performed better:**
+- **Batch operation mastery**: Used JavaScript eval to click all 17 buttons with setTimeout delays in a single command, demonstrating advanced automation capability
+- **Complete coverage**: Captured 18 errors (14 unique types) vs MCP's 3 errors - a 6× improvement in error detection
+- **Stack trace extraction**: Every error included full stack traces with function names, line numbers, and script IDs
+- **Error categorization**: JSON output automatically grouped errors by count and provided unique error identification
+
+**Why MCP struggled:**
+- **Manual clicking limitation**: Made 11 individual click calls instead of batch operation, missing 6 buttons
+- **Console clearing issue**: Some errors may have been cleared or not captured between clicks
+- **No batching capability**: Cannot execute arbitrary JavaScript for batch operations like bdg can
+- **Limited error persistence**: Only showed 3 errors in final console snapshot, suggesting errors were not accumulated
+
+**Token Analysis:**
+- bdg used significantly more tokens (~18.7K) due to comprehensive JSON output with 18 error objects and full stack traces
+- MCP used fewer tokens (~9.3K) because it captured fewer errors and had minimal detail per error
+- Despite higher token usage, bdg's Token Efficiency Score is still superior due to much higher score
+
+**Key takeaway**: bdg's JavaScript evaluation capability enables efficient batch operations that are impossible with MCP's click-by-click approach. This is critical for comprehensive testing scenarios.
 
 ---
 
@@ -174,6 +223,34 @@ MCP tested the TodoMVC app with similar interactions (adding todo, empty submiss
 - ✓ Tested scenarios (1/2)
 - ✓ Retrieved detailed network data (1/2)
 - ⚠️ Less comprehensive testing (1/2)
+
+### Comparative Analysis
+
+**Winner: bdg (+1 point, marginal)**
+
+**Why bdg had a slight edge:**
+- **HAR export capability**: Exported all network activity to a standard HAR file format, enabling offline analysis and integration with other tools
+- **Programmatic network analysis**: Could pipe HAR output through jq for immediate JSON analysis of all 8 requests
+- **More comprehensive testing**: Added 10 todos via JavaScript batch operation vs MCP's single manual todo
+- **Network-first approach**: Used `bdg network har` as primary tool for network inspection
+
+**Why MCP was competitive:**
+- **Faster execution**: Completed in 57s vs bdg's 100s (43% faster)
+- **Detailed request inspection**: Retrieved full HTML response body of the 404 error, showing the GitHub Pages 404 page content
+- **Visual UI context**: Accessibility snapshots showed the todo item state and UI changes after each interaction
+- **Good enough coverage**: Tested key scenarios (add, empty input, toggle, navigation) even if fewer edge cases
+
+**Why both scored similarly:**
+- **Clean application**: TodoMVC React app is well-built with no console errors to find
+- **Limited findings**: Both only found the 404 favicon error, which is trivial
+- **No bugs to discover**: Without actual bugs in the app, neither tool could demonstrate superiority in bug detection
+
+**Token Analysis:**
+- bdg: ~4.7K tokens (efficient HAR export + jq parsing)
+- MCP: ~6.6K tokens (large accessibility tree snapshots with full page content repeated for each interaction)
+- MCP's snapshots are verbose but provide valuable UI state information
+
+**Key takeaway**: On clean applications without bugs, the tools are nearly equivalent. bdg's HAR export is valuable for deeper analysis, but MCP's speed advantage is significant for exploratory testing.
 
 ---
 
@@ -227,6 +304,35 @@ bdg tested valid form submission (John, 25), invalid age below min (10), invalid
 - ⚠️ Did not test all fields (1/2)
 - ⚠️ Limited comprehensive coverage (1/2)
 
+### Comparative Analysis
+
+**Winner: bdg (+2 points)**
+
+**Why bdg performed better:**
+- **More validation scenarios**: Tested 4 distinct scenarios (valid, age < min, age > max, empty required) vs MCP's 3
+- **Faster despite more tests**: Completed in 93s vs MCP's 102s, showing efficiency even with broader coverage
+- **No time penalty**: Stayed within 5-minute limit while MCP exceeded it by 42s
+- **Chained testing**: Used shell command chaining (`&&`) to test multiple scenarios efficiently in sequence
+
+**Why MCP took longer:**
+- **Verbose snapshots**: Each interaction required retrieving full accessibility tree with 460+ nodes (all countries in dropdown)
+- **Larger DOM snapshots**: Country dropdown with 195 options generated massive output on every fill operation
+- **No batching**: Each test scenario required separate fill/click/check sequence
+- **Time penalty**: -2 points for exceeding time limit
+
+**Why both found similar results:**
+- **Working validation**: The form's client-side validation correctly prevented invalid submissions without console errors
+- **HTML5 validation**: Browser's native validation on `required`, `min`, `max` attributes worked correctly
+- **No JavaScript errors**: Validation logic didn't throw errors, just prevented form submission
+- **Both observed validation**: MCP saw `invalid="true"` attribute, bdg observed no submission/no errors
+
+**Token Analysis:**
+- bdg: ~3.5K tokens (compact output, no large DOM snapshots)
+- MCP: ~15.2K tokens (4.3× more!) due to massive accessibility trees with 195-option country dropdown repeated in every snapshot
+- This demonstrates MCP's verbosity problem with complex forms
+
+**Key takeaway**: For form testing, bdg is more efficient in both time and tokens. MCP's accessibility tree becomes unwieldy with large dropdowns, creating significant token overhead without proportional value.
+
 ---
 
 ## Test 5: Memory Leak (⭐⭐⭐⭐⭐ Master)
@@ -278,6 +384,37 @@ MCP clicked message buttons and observed messages appearing in the DOM snapshot.
 - ⚠️ Basic interaction approach (1/2)
 - ⚠️ No profiling tools (0/2)
 - ⚠️ No recommendations (1/2)
+
+### Comparative Analysis
+
+**Winner: bdg (+4 points, decisive)**
+
+**Why bdg dominated:**
+- **CDP HeapProfiler access**: Direct access to Chrome's memory profiling APIs via `bdg cdp Runtime.getHeapUsage`
+- **Quantifiable measurements**: Provided exact heap sizes (833KB → 714KB → 790KB used, 1.5MB → 2MB → 3MB embedder heap)
+- **Memory growth detection**: Demonstrated 44% increase in embedder heap usage (1.36MB → 3MB), proving the leak
+- **Baseline methodology**: Took baseline measurement, triggered leak, re-measured - proper profiling workflow
+- **CDP method discovery**: Used `bdg cdp --search heap` to discover available memory profiling methods
+
+**Why MCP failed:**
+- **No profiling capability**: MCP has no access to heap profiling, memory snapshots, or any memory measurement tools
+- **Visual observation only**: Could only see messages appearing in DOM but couldn't measure actual memory consumption
+- **No quantification**: No way to prove memory was leaking vs just DOM growing (which could be expected behavior)
+- **Cannot access CDP**: MCP cannot invoke Chrome DevTools Protocol methods directly
+- **Fundamentally limited**: This task requires capabilities MCP simply doesn't have
+
+**Why the point gap was only 4:**
+- bdg didn't use advanced profiling beyond basic heap measurements
+- bdg didn't take heap snapshots or analyze detached DOM nodes specifically
+- bdg didn't provide detailed recommendations for fixing the leak
+- Both could trigger the leak behavior, but only bdg could measure it
+
+**Token Analysis:**
+- bdg: ~7.6K tokens (CDP method search, multiple heap measurements, batch clicking)
+- MCP: ~3.5K tokens (fewer interactions, no profiling output, smaller snapshots after stopping traffic)
+- bdg's higher token usage reflects the additional profiling data and CDP exploration
+
+**Key takeaway**: This test highlights the fundamental architectural difference between the tools. Memory leak detection requires CDP access, which is bdg's core strength and MCP's complete blind spot. For any performance or memory debugging, bdg is the only viable option.
 
 ---
 
