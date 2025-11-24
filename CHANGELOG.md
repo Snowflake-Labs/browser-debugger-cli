@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- Empty for now - add here as you work -->
+
+## [0.6.9] - 2025-11-24
+
 ### Added
 
-- **Console object expansion** - Rich nested object display in console messages (#90)
+- **DevTools-compatible network filter DSL** (`bdg network list`) - Chrome DevTools Network panel filter syntax (#91)
+  - 10 filter types: domain, status-code, method, mime-type, resource-type, larger-than, has-response-header, is, scheme
+  - Comparison operators for numeric filters (>=, <=, >, <, =)
+  - Wildcard support for domain matching (e.g., `domain:*.example.com`)
+  - Negation with `-` or `!` prefix (e.g., `-domain:cdn.*`, `!method:POST`)
+  - 8 presets: errors, api, large, cached, documents, media, scripts, pending
+  - Combined filters with AND logic
+  - Follow mode for live streaming (`--follow`)
+  - HAR export with filtering (`bdg network har --filter`)
+- **Console object expansion** - Rich nested object display in console messages (#92)
   - Objects automatically expanded: `{user: {name: "John", id: 123}}` instead of `{user: Object}`
   - Arrays show contents: `[1, 2, 3]` instead of `Array(3)`
   - Special types formatted: Date, RegExp, Error, Map, Set
@@ -17,13 +30,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Async expansion via `Runtime.getProperties` when CDP preview is incomplete
   - Messages maintain timestamp order even with async expansion
   - Configurable via `OBJECT_EXPANSION_MAX_DEPTH` and `OBJECT_EXPANSION_MAX_PROPERTIES` constants
+- **Console level filtering** - `--level` option for filtering by severity (#105)
+  - Filter by error, warning, info, or debug levels
+  - Complements existing `--filter` option for type-based filtering
+- **Quiet mode** - `-q`/`--quiet` flag for minimal session start output (#105)
+  - Ideal for AI agents that parse JSON output
+  - Suppresses progress messages and tips
+- **Benchmark v3.1 specification** - Comprehensive debugging-focused benchmark comparing bdg vs MCP
+  - 5 tests: Basic Error, Multiple Errors, SPA Debugging, Form Validation, Memory Leak
+  - Detailed scoring rubrics for Discovery, Analysis, and Workflow
+  - Token efficiency metrics and comparative analysis
+  - Results: bdg 77/100 vs MCP 60/100 (+28% score advantage, +33% TES advantage)
+  - Full documentation in `docs/benchmarks/BENCHMARK_DEVTOOLS_DEBUGGING_V3.1.md`
+  - Test results in `docs/benchmarks/BENCHMARK_RESULTS_2025-11-24.md`
 
 ### Changed
 
-- **Refactored telemetry modules** - Improved code organization
+- **Refactored network commands** - Modular structure in `src/commands/network/` directory (#91)
+  - Centralized messages in `networkMessages.ts`
+  - Filter DSL parser with validation and helpful error suggestions
+  - Deprecation warning for `bdg peek --network` (use `bdg network list`)
+- **Refactored telemetry modules** - Improved code organization (#92)
   - New `remoteObjectUtils.ts` with shared predicates and formatters
   - New `objectExpander.ts` for async CDP-based expansion
   - Failure tracking with threshold warning for CDP connection issues
+- **Enhanced console timestamps** - Millisecond precision in list view (#105)
+  - Format: `HH:MM:SS.mmm` instead of `HH:MM:SS`
+  - Better alignment with DevTools console timestamps
+- **Improved source location formatting** - Handle inline/eval code gracefully (#105)
+  - Shows `<inline>` or `<eval>` instead of empty string for dynamically evaluated code
+- **Consolidated console level types** - Single source of truth (#105)
+  - Removed duplicate `LEVEL_MAP` in favor of `ConsoleLevel` type
+  - Fixed `ConsoleFormatOptions.level` type (`string` → `ConsoleLevel`)
+
+### Fixed
+
+- **Console buffer size** - IPC layer now passes client's `lastN` parameter (#105)
+  - Console command requests all messages (`lastN=0`) instead of hardcoded 10
+  - Fixes missing messages when more than 10 console logs exist
+- **Memory profiling timeouts** - Increased IPC timeout from 10s to 30s (#105)
+  - Matches CDP timeout for HeapProfiler/Memory domain operations
+  - Fixes timeouts when taking heap snapshots
+- **Network error details** - Capture comprehensive failure information (#105)
+  - Added `errorText`, `canceled`, `blocked`, and `blockedReason` from `loadingFailed` events
+  - Better debugging for SSL/TLS errors, CORS failures, and blocked requests
+- **Commander.js option passing** - Fixed `--json` flag not propagating to subcommands (#88)
+  - Convert `jsonOption` from shared constant to factory function
+  - Add `.enablePositionalOptions()` to parent commands (dom, a11y)
+  - Add `runJsonCommand` helper for consistent early JSON exit pattern
+- **React/Vue form compatibility** - Add synthetic keyboard events for framework detection (#88)
+  - `dispatchSyntheticKeyEvents()` fires `keypress`, `input`, `change`, `submit` events
+  - Fixes form validation not triggering in React/Vue apps
+- **A11y command routing** - CSS selector detection for smart routing (#88)
+  - Properly handles `bdg dom a11y describe <selector>` vs index-based access
+  - Better error handling for JSON output mode
+
+### Documentation
+
+- Added comparative analysis sections for each benchmark test explaining performance differences
+- Added token usage metrics showing bdg's efficiency advantages in most scenarios
+- Documented architectural differences (CDP access, batch operations, memory profiling)
+- Removed outdated roadmap documentation (IMPLEMENTATION_STATUS.md, ROADMAP.md)
 
 ## [0.6.8] - 2025-11-22
 
