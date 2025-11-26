@@ -49,6 +49,31 @@ Early alpha—validating the approach. Feedback welcome!
 
 ---
 
+## Short Version (Casual)
+
+**Title:** Built a CLI for AI agents to talk to Chrome - 33% more efficient than MCP
+
+**Body:**
+
+Made a thing. CLI tool that connects to Chrome DevTools Protocol so AI agents can control browsers without the MCP overhead.
+
+```bash
+bdg example.com          # start session
+bdg dom click "button"   # interact
+bdg console              # see errors
+bdg stop                 # done
+```
+
+Benchmarked it against Chrome DevTools MCP: scored 77 vs 60, uses 43x fewer tokens on complex pages.
+
+Why? Direct access to all 644 CDP methods. Unix-style output (pipes to jq). Errors are exposed so agents self-correct. You can train it on your workflow with [skills](https://docs.anthropic.com/en/docs/claude-code/skills).
+
+Repo: https://github.com/szymdzum/browser-debugger-cli
+
+Alpha stage, works on mac/linux. Would love feedback.
+
+---
+
 ## Version History
 
 - **2025-11-26 v3**: Added high-level helpers (click, fill, query, console, peek, page-load detection)
