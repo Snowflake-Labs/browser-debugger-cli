@@ -22,16 +22,13 @@ Chrome DevTools Protocol in your terminal. Opens a persistent connection to Chro
 
 ## Benchmark: CLI vs MCP for AI Agents
 
-We benchmarked bdg against Chrome DevTools MCP Server on real developer debugging tasks:
+We benchmarked bdg against Chrome DevTools MCP Server on real developer debugging tasks.
 
-| Metric | bdg (CLI) | MCP |
-|--------|-----------|-----|
-| **Score** | 77/100 | 60/100 |
-| **Token Efficiency** | 202.1 | 152.3 |
+
+**[Full benchmark analysis →](docs/benchmarks/ARTICLE_MCP_VS_CLI_FOR_AGENTS.md)**
 
 **Key findings:** CLI provided 33% better token efficiency through selective queries vs full accessibility tree dumps, plus capabilities MCP doesn't expose (memory profiling, HAR export, batch JS execution).
 
-📊 **[Full benchmark analysis →](docs/benchmarks/ARTICLE_MCP_VS_CLI_FOR_AGENTS.md)**
 
 ## Install
 
