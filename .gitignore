@@ -38,3 +38,6 @@ analysis/
 # Docker test output
 docker-output/
 .wiki/
+
+# Private docs
+docs/priv/
