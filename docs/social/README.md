@@ -7,6 +7,9 @@ This directory contains branding assets and social media content for the Browser
 ### [`REDDIT_POST.md`](./REDDIT_POST.md)
 Reddit post template with benchmark data. Target subreddits: r/webdev, r/javascript, r/node, r/LocalLLaMA, r/ClaudeAI
 
+### [`PROMOTION_STRATEGY.md`](./PROMOTION_STRATEGY.md)
+Research-based guide for promoting bdg to developers. Includes tactical playbook, channel recommendations, and content ideas.
+
 ## Logo Files
 
 ### `terminal-logo.txt`

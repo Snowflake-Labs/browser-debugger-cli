@@ -10,38 +10,34 @@ CLI tool for AI agents to control Chrome - benchmarked 33% more token-efficient 
 
 ## Body
 
-I built a CLI tool that connects directly to Chrome DevTools Protocol, designed specifically for AI agents. Just hit alpha.
+Hey 🖖, I built a CLI tool that connects directly to Chrome DevTools Protocol, explicitly designed for CLI agents that can use `bash_tool`. Just hit alpha.
 
-**The problem:** Getting browser context into CLI agents means screenshots, copy-paste from DevTools, Puppeteer scripts, or MCP servers. I wanted something simpler—a Unix-style CLI that agents can just call.
+**The problem:** Getting browser context into CLI agents means screenshots, copy-paste from DevTools, Puppeteer scripts, or MCP servers. I wanted something simpler—a Unix-style CLI that agents can call.
 
 **What it does:** Opens a persistent WebSocket to CDP. Run `bdg example.com`, interact with your page, query live data with `bdg peek`, stop when done.
 
-**Raw access to all [644 CDP methods](https://chromedevtools.github.io/devtools-protocol/)** — not constrained by what a protocol wrapper decides to expose. Memory profiling, network interception, DOM manipulation, performance tracing—if Chrome DevTools can do it, `bdg cdp <method>` can do it.
+**Raw access to all** [**644 CDP methods**](https://chromedevtools.github.io/devtools-protocol/) — not constrained by what a protocol wrapper decides to expose. Memory profiling, network interception, DOM manipulation, performance tracing—if Chrome DevTools can do it, `bdg cdp <method>` can do it.
 
-**Plus high-level helpers** for common tasks: `bdg dom click`, `bdg dom fill`, `bdg dom query` for automation. `bdg console` streams errors in real-time. `bdg peek` shows live network/console activity. Smart page-load detection built in. Raw power when you need it, convenience when you don't.
+**Plus high-level helpers** for everyday tasks: `bdg dom click`, `bdg dom fill`, `bdg dom query` for automation. `bdg console` streams errors in real-time. `bdg peek` shows live network/console activity. Smart page-load detection built in. Raw power when you need it, convenience when you don't.
 
 **I benchmarked it against Chrome DevTools MCP Server** on real debugging tasks:
 
-| | bdg (CLI) | MCP |
-|--|-----------|-----|
-| Score | 77/100 | 60/100 |
-| Token Efficiency | 202 | 152 |
+[Full benchmark](https://github.com/szymdzum/browser-debugger-cli/blob/main/docs/benchmarks/ARTICLE_MCP_VS_CLI_FOR_AGENTS.md)
 
 **Why CLI wins for agents:**
 
-- **Unix philosophy** — composable by design. Output pipes to `jq`, chains with other tools. No protocol overhead.
-- **Self-correcting** — errors are clearly exposed with semantic exit codes. Agent sees what failed and why, adjusts automatically.
-- **43x cheaper** on complex pages (1,200 vs 52,000 tokens for Amazon product page). Selective queries vs full accessibility tree dumps.
-- **Trainable via skills** — define project-specific workflows using [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills). Agent learns your patterns once, reuses everywhere.
-
-Full benchmark: https://github.com/szymdzum/browser-debugger-cli/blob/main/docs/benchmarks/ARTICLE_MCP_VS_CLI_FOR_AGENTS.md
+* **Unix philosophy** — composable by design. Output pipes to `jq`, chains with other tools. No protocol overhead.
+* **Self-correcting** — errors are clearly exposed with semantic exit codes. The agent sees what failed and why, and adjusts automatically.
+* **43x cheaper** on complex pages (1,200 vs 52,000 tokens for the Amazon product page). Selective queries vs full accessibility tree dumps.
+* **Trainable via skills** — define project-specific workflows using [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills). Agent learns your patterns once and reuses them everywhere.
 
 **Agent-friendly by design:**
-- Self-discovery (`bdg cdp --search cookie` finds 14 methods)
-- Semantic exit codes for error handling
-- JSON output, structured errors
 
-Repo: https://github.com/szymdzum/browser-debugger-cli
+* Self-discovery (`bdg cdp --search cookie` finds 14 methods)
+* Semantic exit codes for error handling
+* JSON output, structured errors
+
+Repo: [https://github.com/szymdzum/browser-debugger-cli](https://github.com/szymdzum/browser-debugger-cli)
 
 Tested on macOS/Linux. Windows via WSL works, native Windows not yet.
 
@@ -49,7 +45,7 @@ Early alpha—validating the approach. Feedback welcome!
 
 ---
 
-## Short Version (Casual)
+## Short Version
 
 **Title:** Built a CLI for AI agents to talk to Chrome - 33% more efficient than MCP
 
