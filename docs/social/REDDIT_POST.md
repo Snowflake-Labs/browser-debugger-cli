@@ -1,6 +1,49 @@
 # Reddit Post Template
 
-**Target subreddits:** r/webdev, r/javascript, r/node, r/LocalLLaMA, r/ClaudeAI
+## Target Subreddits (Ranked by Relevance)
+
+### Tier 1: High Relevance (Post First)
+
+| Subreddit | Members | Why | Rules |
+|-----------|---------|-----|-------|
+| **r/LocalLLaMA** | 600K+ | AI agents, local LLM tooling, MCP discussions | Technical focus, no fluff |
+| **r/ClaudeAI** | 100K+ | Claude Code users, MCP alternatives | Be helpful, not salesy |
+| **r/SideProject** | 453K | Built for "I built..." posts | Very supportive, show process |
+| **r/coolgithubprojects** | 60K | GitHub project showcase | Direct links OK |
+
+### Tier 2: Developer Communities
+
+| Subreddit | Members | Why | Rules |
+|-----------|---------|-----|-------|
+| **r/webdev** | 2M+ | Browser debugging, DevTools users | 9:1 ratio, no spam |
+| **r/node** | 200K+ | npm package, CLI tools | Technical content |
+| **r/javascript** | 2M+ | JS debugging, CDP protocol | High quality bar |
+| **r/programming** | 6M+ | General dev tools | Write about process, not product |
+
+### Tier 3: AI/Automation Focused
+
+| Subreddit | Members | Why | Rules |
+|-----------|---------|-----|-------|
+| **r/OpenAI** | 1M+ | AI coding tools discussion | Relevant to AI dev |
+| **r/ChatGPTCoding** | 100K+ | AI-assisted development | Show real use cases |
+| **r/AIPromptProgramming** | 69K+ | AI tool usage | Prompt/workflow focus |
+| **r/opensource** | 210K | Open source projects | Limited self-promo OK |
+
+## Posting Rules to Follow
+
+### The 9:1 Rule
+Only 1 out of 10 posts should be self-promotion. Engage genuinely in communities first.
+
+### Format Tips
+- **Title**: "I built..." format works best
+- **First comment**: Add context, say you're the author, ask for feedback
+- **Include**: Demo GIF/video, technical details, GitHub link
+- **Avoid**: Marketing speak, "revolutionary", product pitches
+
+### r/programming Specific
+- Don't link to product pages directly
+- Write about the development process
+- New accounts promoting = instant ban
 
 ---
 
@@ -72,7 +115,15 @@ Alpha stage, works on mac/linux. Would love feedback.
 
 ## Version History
 
+- **2025-11-26 v4**: Added tiered subreddit targeting with rules and posting guidelines
 - **2025-11-26 v3**: Added high-level helpers (click, fill, query, console, peek, page-load detection)
 - **2025-11-26 v2**: Added raw CDP access (644 methods), Unix philosophy, self-correction, skills training
 - **2025-11-26 v1**: Added benchmark data, structured benefits, confident tone
 - **2025-11-XX**: Initial version (generic intro without data)
+
+## Sources
+
+- [Best subreddits for sharing your project](https://tereza-tizkova.medium.com/best-subreddits-for-sharing-your-project-517c433442f9)
+- [Top 10 Subreddits That Allow Self-Promotion](https://toffu.ai/blog/top-10-subreddits-self-promotion-2025)
+- [Top 10 Generative AI Subreddits](https://www.analyticsvidhya.com/blog/2024/09/generative-ai-subreddit/)
+- [Best Places to Discover Open Source Projects on Reddit](https://open-innovation-projects.org/blog/discover-the-best-places-on-reddit-to-find-open-source-projects-for-collaboration)
