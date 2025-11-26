@@ -1,6 +1,11 @@
 # Social Media Assets
 
-This directory contains ASCII art logos and branding assets for the Browser Debugger CLI project.
+This directory contains branding assets and social media content for the Browser Debugger CLI project.
+
+## Posts
+
+### [`REDDIT_POST.md`](./REDDIT_POST.md)
+Reddit post template with benchmark data. Target subreddits: r/webdev, r/javascript, r/node, r/LocalLLaMA, r/ClaudeAI
 
 ## Logo Files
 
