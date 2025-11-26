@@ -14,7 +14,9 @@ I built a CLI tool that connects directly to Chrome DevTools Protocol, designed 
 
 **The problem:** Getting browser context into CLI agents means screenshots, copy-paste from DevTools, Puppeteer scripts, or MCP servers. I wanted something simpler—a Unix-style CLI that agents can just call.
 
-**What it does:** Opens a persistent WebSocket to CDP. Run `bdg example.com`, interact with your page, query live data with `bdg peek`, stop when done. All 644 CDP methods available via `bdg cdp <method>`.
+**What it does:** Opens a persistent WebSocket to CDP. Run `bdg example.com`, interact with your page, query live data with `bdg peek`, stop when done.
+
+**Raw access to all [644 CDP methods](https://chromedevtools.github.io/devtools-protocol/)** — not constrained by what a protocol wrapper decides to expose. Memory profiling, network interception, DOM manipulation, performance tracing—if Chrome DevTools can do it, `bdg cdp <method>` can do it.
 
 **I benchmarked it against Chrome DevTools MCP Server** on real debugging tasks:
 
@@ -23,17 +25,19 @@ I built a CLI tool that connects directly to Chrome DevTools Protocol, designed 
 | Score | 77/100 | 60/100 |
 | Token Efficiency | 202 | 152 |
 
-**Why CLI won:**
-- **Selective queries** — ask for what you need vs full accessibility tree dumps
-- **43x less tokens** on complex pages (1,200 vs 52,000 for Amazon product page)
-- **Capabilities MCP lacks** — memory profiling, HAR export, batch JS execution
+**Why CLI wins for agents:**
+
+- **Unix philosophy** — composable by design. Output pipes to `jq`, chains with other tools. No protocol overhead.
+- **Self-correcting** — errors are clearly exposed with semantic exit codes. Agent sees what failed and why, adjusts automatically.
+- **43x cheaper** on complex pages (1,200 vs 52,000 tokens for Amazon product page). Selective queries vs full accessibility tree dumps.
+- **Trainable via skills** — define project-specific workflows using [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills). Agent learns your patterns once, reuses everywhere.
 
 Full benchmark: https://github.com/szymdzum/browser-debugger-cli/blob/main/docs/benchmarks/ARTICLE_MCP_VS_CLI_FOR_AGENTS.md
 
 **Agent-friendly by design:**
 - Self-discovery (`bdg cdp --search cookie` finds 14 methods)
 - Semantic exit codes for error handling
-- JSON output pipes to jq naturally
+- JSON output, structured errors
 
 Repo: https://github.com/szymdzum/browser-debugger-cli
 
@@ -45,5 +49,6 @@ Early alpha—validating the approach. Feedback welcome!
 
 ## Version History
 
-- **2025-11-26**: Added benchmark data, structured benefits, confident tone
+- **2025-11-26 v2**: Added raw CDP access (644 methods), Unix philosophy, self-correction, skills training
+- **2025-11-26 v1**: Added benchmark data, structured benefits, confident tone
 - **2025-11-XX**: Initial version (generic intro without data)
