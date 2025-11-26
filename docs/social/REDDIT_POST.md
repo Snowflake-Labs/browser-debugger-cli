@@ -18,6 +18,8 @@ I built a CLI tool that connects directly to Chrome DevTools Protocol, designed 
 
 **Raw access to all [644 CDP methods](https://chromedevtools.github.io/devtools-protocol/)** — not constrained by what a protocol wrapper decides to expose. Memory profiling, network interception, DOM manipulation, performance tracing—if Chrome DevTools can do it, `bdg cdp <method>` can do it.
 
+**Plus high-level helpers** for common tasks: `bdg dom click`, `bdg dom fill`, `bdg dom query` for automation. `bdg console` streams errors in real-time. `bdg peek` shows live network/console activity. Smart page-load detection built in. Raw power when you need it, convenience when you don't.
+
 **I benchmarked it against Chrome DevTools MCP Server** on real debugging tasks:
 
 | | bdg (CLI) | MCP |
@@ -49,6 +51,7 @@ Early alpha—validating the approach. Feedback welcome!
 
 ## Version History
 
+- **2025-11-26 v3**: Added high-level helpers (click, fill, query, console, peek, page-load detection)
 - **2025-11-26 v2**: Added raw CDP access (644 methods), Unix philosophy, self-correction, skills training
 - **2025-11-26 v1**: Added benchmark data, structured benefits, confident tone
 - **2025-11-XX**: Initial version (generic intro without data)
