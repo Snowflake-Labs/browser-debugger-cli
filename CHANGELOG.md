@@ -9,6 +9,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.10] - 2025-11-26
+
+### Added
+
+- **Element-level screenshots** (`bdg dom screenshot --selector`) - Capture specific elements instead of full page (#108)
+  - `--selector <css>` for CSS selector-based element capture
+  - `--index <n>` for cached element index from previous query
+  - Uses CDP `DOM.getBoxModel` for precise element bounds
+  - JSON output includes element bounds metadata
+- **Screenshot sequences** (`bdg dom screenshot --follow`) - Continuous capture for monitoring (#108)
+  - `--follow` enables capture to directory at intervals
+  - `--interval <ms>` controls capture frequency (default: 1000ms)
+  - `--limit <n>` stops after N frames
+  - Supports element-level sequences (`--follow` + `--selector`)
+  - Auto-creates directory if missing
+- **Auto-refresh stale cache** - DOM commands "just work" after navigation (#110)
+  - Automatically re-runs original query when cache is stale
+  - Debug logging: `Cache stale, auto-refreshing query "..."`
+  - Commands succeed transparently without manual re-query
+- **DOM.documentUpdated tracking** - Detect SPA re-renders and document replacements (#110)
+  - Complements existing `Page.frameNavigated` tracking
+  - Catches React/Vue/Angular full re-renders
+- **STALE_CACHE exit code (87)** - Clear signal for unrecoverable cache staleness (#110)
+  - Returned when auto-refresh succeeds but index is out of range
+  - Distinguishes from INVALID_ARGUMENTS (81)
+- **WebSocket message capture in HAR export** - Full WebSocket frame data (#106)
+  - Captures sent and received messages with timestamps
+  - Includes opcode and payload data
+
+### Changed
+
+- **Screenshot output format** - Enhanced metadata for element screenshots (#108)
+  - Shows "Element screenshot captured" vs "Screenshot captured"
+  - Includes selector/index and bounds in JSON output
+- **DomElementResolver** - Centralized auto-refresh logic (#110)
+  - `resolveTarget()`, `getNodeIdForIndex()`, `getElementCount()` all auto-refresh
+  - Stores original selector in cache for refresh capability
+
+### Fixed
+
+- **Package-lock.json sync** - Fixed dependency mismatch causing CI failures
+  - Added missing @typescript-eslint packages at 8.46.4
+
+### Dependencies
+
+- Bump devtools-protocol from 0.0.1543509 to 0.0.1548823
+- Bump @types/node from 22.19.0 to 24.10.1
+- Bump @typescript-eslint/parser from 8.46.3 to 8.47.0
+- Bump @typescript-eslint/eslint-plugin from 8.46.3 to 8.47.0
+- Bump eslint-plugin-tsdoc from 0.4.0 to 0.5.0
+- Bump knip from 5.68.0 to 5.70.1
+- Bump lint-staged from 16.2.6 to 16.2.7
+
 ## [0.6.9] - 2025-11-24
 
 ### Added
