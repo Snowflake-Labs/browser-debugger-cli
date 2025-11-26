@@ -1,13 +1,13 @@
 # bdg Feature Roadmap
 
-**Last Updated:** 2025-11-25  
+**Last Updated:** 2025-11-26
 **Status:** Living Document
 
 This document consolidates planned features, enhancements, and strategic directions for bdg. Features are organized by priority tier and estimated effort.
 
 ---
 
-## Current State (v0.6.9)
+## Current State (v0.6.10)
 
 bdg provides comprehensive CDP access with these core capabilities:
 
@@ -17,8 +17,11 @@ bdg provides comprehensive CDP access with these core capabilities:
 - **Form Automation** - React/Vue/Angular compatible fills, clicks, key presses
 - **Agent-Friendly Design** - Semantic exit codes, JSON output, token-efficient formats
 - **DevTools-Compatible Filtering** - 10 filter types, 8 presets for network data
-- **HAR 1.2 Export** - Full HAR export with WebSocket extensions
+- **HAR 1.2 Export** - Full HAR export with WebSocket message capture
 - **Console Inspection** - Rich object expansion, level filtering, deduplication
+- **Element Screenshots** - Capture specific elements with `--selector` or `--index` (#108)
+- **Screenshot Sequences** - Continuous capture with `--follow` mode (#108)
+- **Auto-Refresh Stale Cache** - DOM commands recover transparently after navigation (#110)
 
 ---
 
@@ -26,24 +29,27 @@ bdg provides comprehensive CDP access with these core capabilities:
 
 High-value features with low implementation risk.
 
-### 1.1 Element Staleness Detection
+### 1.1 Element Staleness Detection ✅ COMPLETED (v0.6.10)
 
 **Problem:** nodeIds become invalid after navigation with no detection mechanism.
 
-**Solution:**
+**Implemented Solution:** Auto-refresh stale cache transparently (#110)
 ```bash
-bdg dom validate <index>
-# Returns: { valid: true } or { valid: false, reason: "removed|navigated" }
+# Commands "just work" after navigation - no manual validation needed
+bdg dom query "button"
+# Navigate to different page...
+bdg dom click --index 0  # Auto-refreshes cache and succeeds
 ```
 
-**Implementation:**
-- Add `NodeRegistry` class tracking nodeId validity via CDP events
-- Subscribe to `DOM.childNodeRemoved`, `DOM.documentUpdated`
-- Expose validation command for agents to check before operations
+**What was built:**
+- Auto-refresh in `DomElementResolver` when navigationId mismatch detected
+- `DOM.documentUpdated` event tracking for SPA re-renders
+- New exit code 87 (`STALE_CACHE`) when auto-refresh fails
+- Debug logging: `Cache stale, auto-refreshing query "..."`
 
-**Files:** `src/cache/NodeRegistry.ts`, `src/commands/dom/validate.ts`
+**Files:** `src/commands/dom/DomElementResolver.ts`, `src/telemetry/navigation.ts`
 
-**References:** [AGENT_FORM_AUTOMATION.md](./AGENT_FORM_AUTOMATION.md)
+**Note:** Implemented differently than originally proposed - auto-refresh instead of manual `validate` command. This provides better UX since commands succeed transparently.
 
 ---
 
@@ -395,27 +401,34 @@ bdg tabs close 0
 
 ---
 
-### 3.5 Screenshot & Recording
+### 3.5 Screenshot & Recording (Screenshots ✅ COMPLETED v0.6.10)
 
 **Problem:** No visual capture capability.
 
-**Solution:**
+**Screenshots - COMPLETED (#108):**
 ```bash
-bdg screenshot output.png
-bdg screenshot --selector ".hero" hero.png
-bdg screenshot --full-page full.png
+bdg dom screenshot output.png                    # Full page
+bdg dom screenshot hero.png --selector ".hero"   # Element capture
+bdg dom screenshot btn.png --index 3             # Cached index
+bdg dom screenshot ./frames/ --follow --interval 500 --limit 10  # Sequence
+```
 
+**What was built:**
+- Element screenshots with `--selector` and `--index` options
+- Screenshot sequences with `--follow`, `--interval`, `--limit`
+- Uses `DOM.getBoxModel` for precise element bounds
+- JSON output includes element bounds metadata
+
+**Recording - NOT IMPLEMENTED:**
+```bash
 bdg record start recording.webm
 # ... interactions ...
 bdg record stop
 ```
 
-**Implementation:**
-- `Page.captureScreenshot` for screenshots
-- Screencast API or Tracing for video
-- Clip regions for element screenshots
+**Note:** Video recording deprioritized because multimodal LLMs cannot analyze video files directly. Screenshot sequences (`--follow`) provide agent-analyzable visual capture.
 
-**Files:** `src/commands/screenshot.ts`, `src/commands/record.ts`
+**Files:** `src/commands/dom/helpers.ts`, `src/commands/dom/index.ts`
 
 ---
 
