@@ -64,7 +64,7 @@ async function withCDPConnection<T>(
   if (!metadata.webSocketDebuggerUrl) {
     throw new CommandError(
       'Missing webSocketDebuggerUrl in session metadata',
-      { note: 'Session metadata may be corrupted or from an older version' },
+      { suggestion: 'Session metadata may be corrupted or from an older version' },
       EXIT_CODES.SESSION_FILE_ERROR
     );
   }
@@ -94,7 +94,7 @@ export function registerFormInteractionCommands(program: Command): void {
   if (!domCommand) {
     throw new CommandError(
       'DOM command group not found',
-      { note: 'This is an internal error - DOM commands may not be registered' },
+      { suggestion: 'This is an internal error - DOM commands may not be registered' },
       EXIT_CODES.SOFTWARE_ERROR
     );
   }
@@ -104,7 +104,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .description('Fill a form field with a value (React-compatible, waits for stability)')
     .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
     .argument('<value>', 'Value to fill')
-    .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
+    .option('--index <n>', 'Element index if selector matches multiple (0-based)', parseInt)
     .option('--no-blur', 'Do not blur after filling (keeps focus on element)')
     .option('--no-wait', 'Skip waiting for network stability after fill')
     .addOption(jsonOption())
@@ -159,7 +159,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .command('click')
     .description('Click an element and wait for stability (accepts selector or index)')
     .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
-    .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
+    .option('--index <n>', 'Element index if selector matches multiple (0-based)', parseInt)
     .option('--no-wait', 'Skip waiting for network stability after click')
     .addOption(jsonOption())
     .action(async (selectorOrIndex: string, options: ClickCommandOptions) => {
@@ -212,7 +212,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .command('submit')
     .description('Submit a form by clicking submit button and waiting for completion')
     .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
-    .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
+    .option('--index <n>', 'Element index if selector matches multiple (0-based)', parseInt)
     .option('--wait-navigation', 'Wait for page navigation after submit')
     .option('--wait-network <ms>', 'Wait for network idle after submit (milliseconds)', '1000')
     .option('--timeout <ms>', 'Maximum time to wait (milliseconds)', '10000')
@@ -274,7 +274,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .description('Press a key on an element (for Enter-to-submit, keyboard navigation)')
     .argument('<selectorOrIndex>', 'CSS selector or numeric index from query results (0-based)')
     .argument('<key>', 'Key to press (Enter, Tab, Escape, Space, ArrowUp, etc.)')
-    .option('--index <n>', 'Element index if selector matches multiple (1-based)', parseInt)
+    .option('--index <n>', 'Element index if selector matches multiple (0-based)', parseInt)
     .option('--times <n>', 'Press key multiple times (default: 1)', parseInt)
     .option('--modifiers <mods>', 'Modifier keys: shift,ctrl,alt,meta (comma-separated)')
     .option('--no-wait', 'Skip waiting for network stability after key press')

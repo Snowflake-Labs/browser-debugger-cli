@@ -6,6 +6,7 @@ import type { CDPConnection } from '@/connection/cdp.js';
 import type { Protocol } from '@/connection/typed-cdp.js';
 import { CommandError } from '@/ui/errors/index.js';
 import { createLogger } from '@/ui/logging/index.js';
+import { delay } from '@/utils/async.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 
 import { getKeyDefinition, parseModifiers, type KeyDefinition } from './keyMapping.js';
@@ -113,7 +114,11 @@ export async function fillElement(
         selector,
         'fill'
       );
-      throw new CommandError(errorMessage, {}, EXIT_CODES.SOFTWARE_ERROR);
+      throw new CommandError(
+        errorMessage,
+        { suggestion: 'Verify the selector matches a fillable element (input, textarea, select)' },
+        EXIT_CODES.SOFTWARE_ERROR
+      );
     }
 
     if (cdpResponse.result?.value && isFillResult(cdpResponse.result.value)) {
@@ -122,7 +127,7 @@ export async function fillElement(
 
     throw new CommandError(
       'Unexpected response format',
-      { note: 'CDP response missing result.value or invalid FillResult structure' },
+      { suggestion: 'CDP response missing result.value or invalid FillResult structure' },
       EXIT_CODES.SOFTWARE_ERROR
     );
   } catch (error) {
@@ -132,7 +137,7 @@ export async function fillElement(
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new CommandError(
       'Failed to fill element',
-      { note: errorMessage },
+      { suggestion: errorMessage },
       EXIT_CODES.SOFTWARE_ERROR
     );
   }
@@ -182,7 +187,11 @@ export async function clickElement(
         selector,
         'click'
       );
-      throw new CommandError(errorMessage, {}, EXIT_CODES.SOFTWARE_ERROR);
+      throw new CommandError(
+        errorMessage,
+        { suggestion: 'Verify the selector matches a clickable element' },
+        EXIT_CODES.SOFTWARE_ERROR
+      );
     }
 
     if (cdpResponse.result?.value && isClickResult(cdpResponse.result.value)) {
@@ -191,7 +200,7 @@ export async function clickElement(
 
     throw new CommandError(
       'Unexpected response format',
-      { note: 'CDP response missing result.value or invalid ClickResult structure' },
+      { suggestion: 'CDP response missing result.value or invalid ClickResult structure' },
       EXIT_CODES.SOFTWARE_ERROR
     );
   } catch (error) {
@@ -201,7 +210,7 @@ export async function clickElement(
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new CommandError(
       'Failed to click element',
-      { note: errorMessage },
+      { suggestion: errorMessage },
       EXIT_CODES.SOFTWARE_ERROR
     );
   }
@@ -297,19 +306,10 @@ export async function waitForActionStability(cdp: CDPConnection): Promise<void> 
 }
 
 /**
- * Delay utility.
- *
- * @param ms - Milliseconds to delay
- */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
  * Options for pressing a key on an element.
  */
 export interface PressKeyOptions {
-  /** Element index if selector matches multiple (1-based) */
+  /** Element index if selector matches multiple (0-based) */
   index?: number;
   /** Number of times to press the key (default: 1) */
   times?: number;
@@ -343,14 +343,14 @@ const FOCUS_ELEMENT_SCRIPT = `
   }
 
   let el;
-  if (typeof index === 'number' && index > 0) {
-    if (index > allMatches.length) {
+  if (typeof index === 'number' && index >= 0) {
+    if (index >= allMatches.length) {
       return { 
         success: false, 
-        error: 'Index ' + index + ' out of range (found ' + allMatches.length + ' nodes)' 
+        error: 'Index ' + index + ' out of range (found ' + allMatches.length + ' nodes, use 0-' + (allMatches.length - 1) + ')' 
       };
     }
-    el = allMatches[index - 1];
+    el = allMatches[index];
   } else {
     el = allMatches[0];
   }
@@ -423,7 +423,7 @@ export async function pressKeyElement(
     if (focusCdpResponse.exceptionDetails) {
       throw new CommandError(
         `Failed to focus element: ${focusCdpResponse.exceptionDetails.text}`,
-        { note: `Selector: ${selector}` },
+        { suggestion: `Selector: ${selector}` },
         EXIT_CODES.SOFTWARE_ERROR
       );
     }
@@ -463,7 +463,7 @@ export async function pressKeyElement(
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new CommandError(
       'Failed to press key',
-      { note: errorMessage },
+      { suggestion: errorMessage },
       EXIT_CODES.SOFTWARE_ERROR
     );
   }

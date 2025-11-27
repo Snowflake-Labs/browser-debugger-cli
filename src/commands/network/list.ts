@@ -1,206 +1,149 @@
 /**
  * Network list command with DevTools-compatible filter DSL.
- *
- * Provides powerful filtering capabilities for network requests including
- * status codes, domains, HTTP methods, MIME types, size thresholds, and more.
  */
 
 import { Option, type Command } from 'commander';
 
+import { runCommand } from '@/commands/shared/CommandRunner.js';
 import { jsonOption } from '@/commands/shared/commonOptions.js';
 import { handleDaemonConnectionError } from '@/commands/shared/daemonErrorHandler.js';
+import { fetchNetworkRequests, createErrorResult } from '@/commands/shared/dataFetcher.js';
 import { setupFollowMode } from '@/commands/shared/followMode.js';
 import type { BaseOptions } from '@/commands/shared/optionTypes.js';
-import { getErrorMessage } from '@/connection/errors.js';
-import { getPeek } from '@/ipc/client.js';
-import { validateIPCResponse } from '@/ipc/index.js';
+import { positiveIntRule, resourceTypeRule } from '@/commands/shared/validation.js';
+import type { Protocol } from '@/connection/typed-cdp.js';
 import { applyFilters, getFilterHelpText, validateFilterString } from '@/telemetry/filterDsl.js';
 import { resolvePreset, FILTER_PRESETS } from '@/telemetry/filterPresets.js';
-import type { BdgOutput, NetworkRequest } from '@/types.js';
+import { filterByResourceType } from '@/telemetry/filters.js';
+import type { NetworkRequest } from '@/types.js';
+import { OutputBuilder } from '@/ui/OutputBuilder.js';
 import { CommandError } from '@/ui/errors/index.js';
 import { formatNetworkList, type NetworkListOptions } from '@/ui/formatters/networkList.js';
 import {
   followingNetworkMessage,
-  noNetworkDataMessage,
   stoppedFollowingNetworkMessage,
 } from '@/ui/messages/networkMessages.js';
-import { invalidLastRangeError } from '@/ui/messages/validation.js';
-import { getExitCodeForConnectionError } from '@/utils/errorMapping.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 
-const MIN_LAST_ITEMS = 0;
-const MAX_LAST_ITEMS = 10000;
-const DEFAULT_LAST_ITEMS = 100;
-const FOLLOW_MODE_LIMIT = 50;
-const FOLLOW_INTERVAL_MS = 1000;
+const MIN_LAST = 0;
+const MAX_LAST = 10000;
+const DEFAULT_LAST = 100;
+const FOLLOW_LIMIT = 50;
+const FOLLOW_INTERVAL = 1000;
 
-/**
- * Options for network list command.
- * Extends BaseOptions to inherit standard json flag handling.
- */
 interface NetworkListCommandOptions extends BaseOptions {
   filter?: string;
   preset?: string;
-  last?: number;
+  type?: string;
+  last?: string;
   follow?: boolean;
   verbose?: boolean;
 }
 
 const networkLastOption = new Option(
   '--last <n>',
-  `Show last N requests (0 = all, default: ${DEFAULT_LAST_ITEMS})`
-)
-  .default(DEFAULT_LAST_ITEMS)
-  .argParser(parseLastOption);
-
-const filterDslOption = new Option(
-  '--filter <dsl>',
-  'Filter requests using DevTools DSL (e.g., "status-code:>=400 domain:api.*")'
-);
-
-const presetOption = new Option('--preset <name>', 'Use predefined filter preset').choices(
-  Object.keys(FILTER_PRESETS)
-);
-
-const followOption = new Option('-f, --follow', 'Stream network requests in real-time').default(
-  false
-);
-
-const verboseOption = new Option('-v, --verbose', 'Show full URLs and additional details').default(
-  false
-);
+  `Show last N requests (0 = all, default: ${DEFAULT_LAST})`
+).default(String(DEFAULT_LAST));
 
 /**
- * Parse and validate --last option value.
+ * Validate preset option early with typo detection.
+ *
+ * @param preset - Preset name from options
+ * @throws CommandError with typo suggestion if invalid
  */
-function parseLastOption(val: string): number {
-  const n = parseInt(val, 10);
-  if (isNaN(n) || n < MIN_LAST_ITEMS || n > MAX_LAST_ITEMS) {
-    throw new CommandError(
-      invalidLastRangeError(MIN_LAST_ITEMS, MAX_LAST_ITEMS),
-      {},
-      EXIT_CODES.INVALID_ARGUMENTS
-    );
+function validatePreset(preset?: string): void {
+  if (preset) {
+    resolvePreset(preset);
   }
-  return n;
 }
 
-/**
- * Build combined filter string from preset and explicit filter.
- */
 function buildFilterString(options: NetworkListCommandOptions): string {
   const explicit = options.filter ?? '';
   if (!options.preset) return explicit;
-
   const presetFilter = resolvePreset(options.preset);
   return explicit ? `${presetFilter} ${explicit}` : presetFilter;
 }
 
-/**
- * Validate filter syntax and throw CommandError if invalid.
- */
-function validateFilterOptions(options: NetworkListCommandOptions): void {
+function validateAndGetFilters(options: NetworkListCommandOptions): void {
   const filterString = buildFilterString(options);
   if (!filterString) return;
 
   const validation = validateFilterString(filterString);
-  if (validation.valid) return;
-
-  const metadata = validation.suggestion ? { suggestion: validation.suggestion } : {};
-  throw new CommandError(validation.error, metadata, EXIT_CODES.INVALID_ARGUMENTS);
+  if (!validation.valid) {
+    throw new CommandError(
+      validation.error,
+      { suggestion: validation.suggestion ?? 'Check filter syntax' },
+      EXIT_CODES.INVALID_ARGUMENTS
+    );
+  }
 }
 
 /**
- * Apply filters to requests array.
+ * Parse and validate resource types from --type option.
+ *
+ * @param typeOption - Raw type option value
+ * @returns Validated resource types array
+ */
+function parseResourceTypes(typeOption?: string): Protocol.Network.ResourceType[] {
+  return resourceTypeRule().validate(typeOption);
+}
+
+/**
+ * Handle validation errors with proper JSON/human formatting.
+ *
+ * @param error - Error from validation
+ * @param json - Whether to output JSON format
+ */
+function handleValidationError(error: unknown, json: boolean): never {
+  if (error instanceof CommandError) {
+    if (json) {
+      const errorOptions: { exitCode: number; suggestion?: string } = {
+        exitCode: error.exitCode,
+      };
+      if (error.metadata.suggestion) {
+        errorOptions.suggestion = error.metadata.suggestion;
+      }
+      console.log(JSON.stringify(OutputBuilder.buildJsonError(error.message, errorOptions)));
+    } else {
+      console.error(error.message);
+      if (error.metadata.suggestion) console.error(error.metadata.suggestion);
+    }
+    process.exit(error.exitCode);
+  }
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(EXIT_CODES.INVALID_ARGUMENTS);
+}
+
+/**
+ * Filter requests using DSL filters and resource type filters.
+ *
+ * @param requests - Network requests to filter
+ * @param options - Command options containing filter and type
+ * @param resourceTypes - Pre-validated resource types
+ * @returns Filtered network requests
  */
 function filterRequests(
   requests: NetworkRequest[],
-  options: NetworkListCommandOptions
+  options: NetworkListCommandOptions,
+  resourceTypes: Protocol.Network.ResourceType[]
 ): NetworkRequest[] {
+  let filtered = requests;
+
   const filterString = buildFilterString(options);
-  if (!filterString) return requests;
-
-  const validation = validateFilterString(filterString);
-  return validation.valid ? applyFilters(requests, validation.filters) : requests;
-}
-
-/**
- * Handle empty network data response.
- */
-function handleEmptyNetworkData(options: NetworkListCommandOptions): never {
-  if (options.json) {
-    console.log(JSON.stringify({ success: true, data: [], count: 0 }));
-  } else {
-    console.log(noNetworkDataMessage());
-  }
-  process.exit(EXIT_CODES.SUCCESS);
-}
-
-/**
- * Handle IPC validation error with daemon error handler.
- */
-function handleValidationError(error: unknown, options: NetworkListCommandOptions): boolean {
-  const errorMsg = getErrorMessage(error);
-  const exitCode = getExitCodeForConnectionError(errorMsg);
-  const result = handleDaemonConnectionError(errorMsg, {
-    json: options.json,
-    follow: options.follow,
-    retryIntervalMs: FOLLOW_INTERVAL_MS,
-    exitCode,
-  });
-
-  if (result.shouldExit) {
-    process.exit(result.exitCode);
-  }
-  return false;
-}
-
-/**
- * Handle daemon connection failure.
- */
-function handleConnectionFailure(options: NetworkListCommandOptions): null {
-  const result = handleDaemonConnectionError('Daemon not running', {
-    json: options.json,
-    follow: options.follow,
-    retryIntervalMs: FOLLOW_INTERVAL_MS,
-  });
-
-  if (result.shouldExit) {
-    process.exit(result.exitCode);
-  }
-  return null;
-}
-
-/**
- * Fetch network requests from the daemon.
- */
-async function fetchNetworkRequests(
-  options: NetworkListCommandOptions
-): Promise<NetworkRequest[] | null> {
-  try {
-    const response = await getPeek();
-
-    try {
-      validateIPCResponse(response);
-    } catch (validationError) {
-      handleValidationError(validationError, options);
-      return null;
+  if (filterString) {
+    const validation = validateFilterString(filterString);
+    if (validation.valid) {
+      filtered = applyFilters(filtered, validation.filters);
     }
-
-    const output = response.data?.preview as BdgOutput | undefined;
-    if (!output?.data.network) {
-      handleEmptyNetworkData(options);
-    }
-
-    return output.data.network;
-  } catch {
-    return handleConnectionFailure(options);
   }
+
+  if (resourceTypes.length > 0) {
+    filtered = filterByResourceType(filtered, resourceTypes);
+  }
+
+  return filtered;
 }
 
-/**
- * Build format options for display functions.
- */
 function buildFormatOptions(
   options: NetworkListCommandOptions,
   totalCount: number,
@@ -216,131 +159,118 @@ function buildFormatOptions(
   };
 }
 
-/**
- * Display network requests in standard mode.
- */
-function displayNetworkList(requests: NetworkRequest[], options: NetworkListCommandOptions): void {
-  const lastCount = options.last ?? DEFAULT_LAST_ITEMS;
-  const displayRequests = lastCount === 0 ? requests : requests.slice(-lastCount);
-  const formatOptions = buildFormatOptions(options, requests.length, lastCount);
-
-  console.log(formatNetworkList(displayRequests, formatOptions));
-}
-
-/**
- * Display network requests in follow/streaming mode.
- */
-function displayNetworkStreaming(
-  requests: NetworkRequest[],
-  options: NetworkListCommandOptions
-): void {
-  const displayRequests = requests.slice(-FOLLOW_MODE_LIMIT);
-  const formatOptions = buildFormatOptions(options, requests.length, FOLLOW_MODE_LIMIT, true);
-
-  console.clear();
-  console.log(formatNetworkList(displayRequests, formatOptions));
-}
-
-/**
- * Handle CommandError with appropriate output format.
- */
-function handleCommandError(error: CommandError, json: boolean): never {
-  if (json) {
-    console.log(JSON.stringify({ success: false, error: error.message }));
-  } else {
-    console.error(error.message);
-    if (error.metadata?.suggestion) {
-      console.error(error.metadata.suggestion);
-    }
-  }
-  process.exit(error.exitCode);
-}
-
-/**
- * Process and display filtered network requests.
- */
-async function processNetworkRequests(
+async function runFollowMode(
   options: NetworkListCommandOptions,
-  displayFn: (requests: NetworkRequest[], options: NetworkListCommandOptions) => void
+  resourceTypes: Protocol.Network.ResourceType[]
 ): Promise<void> {
-  const requests = await fetchNetworkRequests(options);
-  if (!requests) return;
+  const showNetwork = async (): Promise<void> => {
+    const result = await fetchNetworkRequests();
 
-  try {
-    const filtered = filterRequests(requests, options);
-    displayFn(filtered, options);
-  } catch (error) {
-    if (error instanceof CommandError) {
-      handleCommandError(error, options.json ?? false);
+    if (!result.success) {
+      const errorResult = handleDaemonConnectionError(result.error, {
+        json: options.json,
+        follow: true,
+        retryIntervalMs: FOLLOW_INTERVAL,
+        exitCode: result.exitCode,
+      });
+      if (errorResult.shouldExit) process.exit(errorResult.exitCode);
+      return;
     }
-    throw error;
-  }
-}
 
-/**
- * Run follow mode with periodic updates.
- */
-async function runFollowMode(options: NetworkListCommandOptions): Promise<void> {
-  const refresh = (): Promise<void> => processNetworkRequests(options, displayNetworkStreaming);
+    const filtered = filterRequests(result.data, options, resourceTypes);
+    const displayRequests = filtered.slice(-FOLLOW_LIMIT);
+    const formatOptions = buildFormatOptions(options, filtered.length, FOLLOW_LIMIT, true);
 
-  await setupFollowMode(refresh, {
+    console.clear();
+    console.log(formatNetworkList(displayRequests, formatOptions));
+  };
+
+  await setupFollowMode(showNetwork, {
     startMessage: followingNetworkMessage,
     stopMessage: stoppedFollowingNetworkMessage,
-    intervalMs: FOLLOW_INTERVAL_MS,
+    intervalMs: FOLLOW_INTERVAL,
   });
 }
 
-/**
- * Run standard (non-follow) mode.
- */
-async function runStandardMode(options: NetworkListCommandOptions): Promise<void> {
-  await processNetworkRequests(options, displayNetworkList);
-}
-
-/**
- * Execute network list command action.
- */
-async function executeNetworkList(options: NetworkListCommandOptions): Promise<void> {
-  try {
-    validateFilterOptions(options);
-  } catch (error) {
-    if (error instanceof CommandError) {
-      handleCommandError(error, options.json ?? false);
-    }
-    throw error;
-  }
-
-  if (options.follow) {
-    await runFollowMode(options);
-  } else {
-    await runStandardMode(options);
-  }
-}
-
-/**
- * Format preset help text for command help output.
- */
 function formatPresetHelp(): string {
   return Object.entries(FILTER_PRESETS)
     .map(([name, preset]) => `  ${name.padEnd(12)} ${preset.description}`)
     .join('\n');
 }
 
-/**
- * Register network list command.
- *
- * @param networkCmd - Network parent command
- */
+interface NetworkListResult {
+  requests: NetworkRequest[];
+  filtered: NetworkRequest[];
+  totalCount: number;
+}
+
 export function registerListCommand(networkCmd: Command): void {
   networkCmd
     .command('list')
     .description('List network requests with DevTools-compatible filtering')
     .addOption(jsonOption())
-    .addOption(filterDslOption)
-    .addOption(presetOption)
+    .addOption(
+      new Option(
+        '--filter <dsl>',
+        'Filter requests using DevTools DSL (e.g., "status-code:>=400 domain:api.*")'
+      )
+    )
+    .addOption(new Option('--preset <name>', 'Use predefined filter preset'))
+    .addOption(
+      new Option(
+        '--type <types>',
+        'Filter by resource type (comma-separated: Document,XHR,Fetch,etc.)'
+      )
+    )
     .addOption(networkLastOption)
-    .addOption(followOption)
-    .addOption(verboseOption)
+    .addOption(new Option('-f, --follow', 'Stream network requests in real-time').default(false))
+    .addOption(new Option('-v, --verbose', 'Show full URLs and additional details').default(false))
     .addHelpText('after', `\n${getFilterHelpText()}\n\nPresets:\n${formatPresetHelp()}`)
-    .action(executeNetworkList);
+    .action(async (options: NetworkListCommandOptions) => {
+      let resourceTypes: Protocol.Network.ResourceType[];
+      let lastN: number;
+
+      try {
+        validatePreset(options.preset);
+        validateAndGetFilters(options);
+        resourceTypes = parseResourceTypes(options.type);
+        lastN = positiveIntRule({ min: MIN_LAST, max: MAX_LAST, default: DEFAULT_LAST }).validate(
+          options.last
+        );
+      } catch (error) {
+        handleValidationError(error, options.json ?? false);
+      }
+
+      if (options.follow) {
+        await runFollowMode(options, resourceTypes);
+        return;
+      }
+
+      await runCommand(
+        async () => {
+          const result = await fetchNetworkRequests();
+
+          if (!result.success) {
+            if (result.exitCode === EXIT_CODES.SUCCESS) {
+              return { success: true, data: { requests: [], filtered: [], totalCount: 0 } };
+            }
+            return createErrorResult(result.error, result.exitCode);
+          }
+
+          const filtered = filterRequests(result.data, options, resourceTypes);
+          return {
+            success: true,
+            data: { requests: result.data, filtered, totalCount: result.data.length },
+          };
+        },
+        options,
+        (data: NetworkListResult) => {
+          const displayRequests = lastN === 0 ? data.filtered : data.filtered.slice(-lastN);
+          return formatNetworkList(
+            displayRequests,
+            buildFormatOptions(options, data.totalCount, lastN)
+          );
+        }
+      );
+    });
 }
