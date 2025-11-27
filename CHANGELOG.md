@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.6.11] - 2025-11-27
+
+### Added
+
+- **Screenshot auto-resize for Claude Vision** (#118) - Inspired by [community feedback](https://www.reddit.com/r/ClaudeCode/comments/1p74cx6/comment/nqzkk44/) that avoiding screenshots lets agents run 100+ tool calls
+  - Auto-resize to 1568px max edge (~1,600 tokens optimal for Claude Vision)
+  - Fall back to viewport capture for tall pages (aspect ratio > 3:1)
+  - Force `deviceScaleFactor=1` during capture (fixes 4x token bloat on Retina displays)
+  - `--no-resize` flag for full resolution capture (archiving/debugging)
+  - `--scroll <selector>` option to scroll element into view before capture
+  - Resize metadata in JSON output (original/final dimensions, token estimates, capture mode)
+- **Exit code registry in help** (#114) - `bdg --help --json` now includes all 17 exit codes for agent introspection
+- **Typo detection with suggestions** (#114) - Levenshtein distance matching for `--preset` and `--type` options
+
+### Changed
+
+- **Agent-friendly consistency refactor** (#114)
+  - Added `BdgResponse<T>` type with type guards for stable JSON API contract
+  - Extracted shared utilities: `delay()`, `suggestions.ts`, `dataFetcher.ts`
+  - Standardized logging with `createLogger()` instead of raw console
+  - Consolidated error builders to single `buildJsonError` pattern
+  - 57 files changed, -177 net lines (cleaner, more consistent code)
+
+### Fixed
+
+- **Screenshot DPR race condition** (#118) - Re-scroll after DPR override to prevent position drift
+- **Screenshot clip coordinates** (#118) - Use scroll position in clip (document origin fix)
+- **Screenshot scroll restoration** (#118) - Save/restore scroll position after capture
+- **Validation error handling** (#114) - Validation errors now return exit 81 (was showing stack traces)
+- **JSON output pollution** (#114) - Suppressed daemon logs and "Chrome killed" message when `--json` flag used
+- **Documentation accuracy** - Fixed misleading token claims (Claude rejects >20MB images, doesn't charge 376k tokens)
+
 ## [0.6.10] - 2025-11-26
 
 ### Added

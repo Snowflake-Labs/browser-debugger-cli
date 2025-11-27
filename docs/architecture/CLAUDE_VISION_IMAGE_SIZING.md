@@ -555,6 +555,8 @@ We tested the auto-resize feature on [Claude Shannon's Wikipedia page](https://e
 | Viewport only | `--no-full-page` | 2946×3136 | 12,319 | 911 KB |
 | Scroll to section | `--scroll "#References"` | 2946×3136 | 12,319 | 34 KB |
 
+> **Important:** The 376k token figure is theoretical (calculated from raw dimensions). In practice, Claude would **reject** this image entirely—it exceeds the 20MB file size limit (35MB) and 1.15MP megapixel limit (282MP). If somehow accepted, Claude's auto-resize would scale the 75,666px height to fit 1568px, resulting in a **77px wide** illegible image. Either way, the full-page capture is unusable—which is exactly why client-side auto-resize matters.
+
 #### Key Findings
 
 **1. Tall Page Detection Triggered**
@@ -571,15 +573,13 @@ The auto-resize correctly detected the extreme aspect ratio and fell back to vie
 }
 ```
 
-**2. Token Savings: 97%**
+**2. File Size Reduction**
 
-| Metric | Full Resolution | Auto-Resize | Savings |
-|--------|-----------------|-------------|---------|
-| Tokens | 376,515 | 12,319 | **97%** |
+| Metric | Full Resolution | Auto-Resize | Reduction |
+|--------|-----------------|-------------|-----------|
 | File size | 35 MB | 911 KB | **97%** |
-| Est. cost* | ~$1.50 | ~$0.05 | **97%** |
-
-*At Claude's approximate pricing of $0.40/1M tokens for vision.
+| Dimensions | 3732×75666 | 2946×3136 | Usable |
+| Claude accepts? | No (>20MB) | Yes | ✓ |
 
 **3. Scroll Feature Works**
 
@@ -587,15 +587,9 @@ The `--scroll` option successfully navigated to the References section and captu
 
 #### Why This Matters
 
-Without auto-resize, a single Wikipedia article screenshot would cost **376k tokens**. For an AI agent browsing multiple pages, this quickly becomes prohibitive:
+Without client-side auto-resize, full-page screenshots of long articles hit Claude's hard limits (20MB file size, 1.15MP). The image is either rejected outright or auto-resized server-side to an illegible thumbnail. With bdg's auto-resize, you get a usable viewport capture at ~3k tokens instead of a rejected or destroyed image.
 
-| Scenario | Pages | Tokens (no resize) | Tokens (auto) |
-|----------|-------|-------------------|---------------|
-| Single page | 1 | 376,515 | 12,319 |
-| Research session | 10 | 3,765,150 | 123,190 |
-| Extended browsing | 50 | 18,825,750 | 615,950 |
-
-The auto-resize feature makes vision-based browsing economically viable.
+The auto-resize feature makes vision-based browsing actually work.
 
 ---
 
@@ -623,6 +617,9 @@ The auto-resize feature makes vision-based browsing economically viable.
 - [ScreenshotOne: Full Page Screenshot Guide](https://screenshotone.com/blog/a-complete-guide-on-how-to-take-full-page-screenshots-with-puppeteer-playwright-or-selenium/)
 - [Cloudinary: Smart Cropping](https://cloudinary.com/blog/introducing_smart_cropping_intelligent_quality_selection_and_automated_responsive_images)
 - [Medium: Claude Vision Capability](https://medium.com/@judeaugustinej/vision-capability-from-claude-4150e6023d98)
+
+### Community Inspiration
+- [Reddit: "Telling it not to use screenshots unless necessary lets it drive forever"](https://www.reddit.com/r/ClaudeCode/comments/1p74cx6/comment/nqzkk44/) - The feedback that inspired this optimization
 
 ---
 
