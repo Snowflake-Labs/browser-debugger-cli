@@ -27,6 +27,7 @@ import type { CDPConnection } from '@/connection/cdp.js';
 import type { SessionMetadata } from '@/session/metadata.js';
 import { CommandError } from '@/ui/errors/index.js';
 import { OutputFormatter } from '@/ui/formatting.js';
+import { sessionMetadataMissingError, internalError } from '@/ui/messages/errors.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 import { filterDefined } from '@/utils/objects.js';
 
@@ -62,9 +63,10 @@ async function withCDPConnection<T>(
 
   const cdp = new CDPConnection();
   if (!metadata.webSocketDebuggerUrl) {
+    const err = sessionMetadataMissingError('webSocketDebuggerUrl');
     throw new CommandError(
-      'Missing webSocketDebuggerUrl in session metadata',
-      { suggestion: 'Session metadata may be corrupted or from an older version' },
+      err.message,
+      { suggestion: err.suggestion },
       EXIT_CODES.SESSION_FILE_ERROR
     );
   }
@@ -92,11 +94,8 @@ export function registerFormInteractionCommands(program: Command): void {
   const domCommand = program.commands.find((cmd) => cmd.name() === 'dom');
 
   if (!domCommand) {
-    throw new CommandError(
-      'DOM command group not found',
-      { suggestion: 'This is an internal error - DOM commands may not be registered' },
-      EXIT_CODES.SOFTWARE_ERROR
-    );
+    const err = internalError('DOM command group not found');
+    throw new CommandError(err.message, { suggestion: err.suggestion }, EXIT_CODES.SOFTWARE_ERROR);
   }
 
   domCommand
@@ -121,7 +120,7 @@ export function registerFormInteractionCommands(program: Command): void {
               success: false,
               error: target.error ?? 'Failed to resolve element target',
               exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
-              suggestion: target.suggestion,
+              ...(target.suggestion && { errorContext: { suggestion: target.suggestion } }),
             };
           }
 
@@ -140,6 +139,11 @@ export function registerFormInteractionCommands(program: Command): void {
                 exitCode: result.error?.includes('not found')
                   ? EXIT_CODES.RESOURCE_NOT_FOUND
                   : EXIT_CODES.INVALID_ARGUMENTS,
+                errorContext: {
+                  suggestion:
+                    result.suggestion ??
+                    'Verify the selector matches a fillable element (input, textarea, select)',
+                },
               };
             }
 
@@ -175,7 +179,7 @@ export function registerFormInteractionCommands(program: Command): void {
               success: false,
               error: target.error ?? 'Failed to resolve element target',
               exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
-              suggestion: target.suggestion,
+              ...(target.suggestion && { errorContext: { suggestion: target.suggestion } }),
             };
           }
 
@@ -193,6 +197,10 @@ export function registerFormInteractionCommands(program: Command): void {
                 exitCode: result.error?.includes('not found')
                   ? EXIT_CODES.RESOURCE_NOT_FOUND
                   : EXIT_CODES.INVALID_ARGUMENTS,
+                errorContext: {
+                  suggestion:
+                    result.suggestion ?? 'Verify the selector matches a clickable element',
+                },
               };
             }
 
@@ -230,7 +238,7 @@ export function registerFormInteractionCommands(program: Command): void {
               success: false,
               error: target.error ?? 'Failed to resolve element target',
               exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
-              suggestion: target.suggestion,
+              ...(target.suggestion && { errorContext: { suggestion: target.suggestion } }),
             };
           }
 
@@ -258,6 +266,10 @@ export function registerFormInteractionCommands(program: Command): void {
                   : result.error?.includes('Timeout')
                     ? EXIT_CODES.CDP_TIMEOUT
                     : EXIT_CODES.INVALID_ARGUMENTS,
+                errorContext: {
+                  suggestion:
+                    result.suggestion ?? 'Verify the selector matches a form or submit button',
+                },
               };
             }
 
@@ -292,7 +304,7 @@ export function registerFormInteractionCommands(program: Command): void {
               success: false,
               error: target.error ?? 'Failed to resolve element target',
               exitCode: target.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
-              suggestion: target.suggestion,
+              ...(target.suggestion && { errorContext: { suggestion: target.suggestion } }),
             };
           }
 
@@ -312,6 +324,10 @@ export function registerFormInteractionCommands(program: Command): void {
                 exitCode: result.error?.includes('not found')
                   ? EXIT_CODES.RESOURCE_NOT_FOUND
                   : EXIT_CODES.INVALID_ARGUMENTS,
+                errorContext: {
+                  suggestion:
+                    result.suggestion ?? 'Verify the selector matches a focusable element',
+                },
               };
             }
 

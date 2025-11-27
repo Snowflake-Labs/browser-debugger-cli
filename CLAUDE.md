@@ -50,6 +50,31 @@ throw new CommandError(
 ### Message Centralization (`src/ui/messages/`)
 All user-facing strings must use centralized functions - no inline strings.
 
+### Error Messages with Suggestions (`src/ui/messages/errors.ts`)
+Common error patterns with recovery suggestions. Use existing functions or add new ones:
+```typescript
+// Existing: elementNotFoundError, sessionNotActiveError, daemonNotRunningError
+throw new CommandError(elementNotFoundError(selector), {}, EXIT_CODES.RESOURCE_NOT_FOUND);
+
+// Context-specific: pass suggestion inline
+throw new CommandError(
+  `Index ${index} out of range (found ${count} nodes)`,
+  { suggestion: 'Re-run query to refresh cache' },
+  EXIT_CODES.STALE_CACHE
+);
+```
+
+### Option Behaviors (`src/commands/optionBehaviors.ts`)
+When adding commands/flags with non-obvious behaviors, register in `OPTION_BEHAVIORS`:
+```typescript
+'commandName:--flag': {
+  default: 'What happens without this flag',
+  whenEnabled: 'What happens with this flag',
+  automaticBehavior: 'Hidden behaviors agents should know',
+  tokenImpact: 'Token cost implications (if relevant)',
+}
+```
+
 ### Logging (`src/ui/logging/`)
 ```typescript
 const log = createLogger('module-name');
@@ -159,6 +184,16 @@ bdg --help                                 # Run (after npm link)
 - **No dead code** - Delete unused code, don't comment out
 - **No empty catch** - Use `log.debug()` for visibility
 - **No inline comments** - Use TSDoc comments
+
+#### Function Design
+- **Single responsibility** - Extract large functions into smaller, focused units
+- **Max ~30 lines** - If longer, consider splitting
+- **Consolidate patterns** - Identify repeated logic, use appropriate abstractions
+
+#### Readability
+- **Descriptive names** - Functions/variables should be self-documenting
+- **Early returns** - Reduce nesting with guard clauses
+- **Consistent structure** - Similar operations should look similar
 
 ---
 

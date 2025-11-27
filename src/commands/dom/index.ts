@@ -33,7 +33,11 @@ import {
   formatDomScreenshot,
 } from '@/ui/formatters/dom.js';
 import { createLogger } from '@/ui/logging/index.js';
-import { elementNotFoundError } from '@/ui/messages/errors.js';
+import {
+  missingArgumentError,
+  elementAtIndexNotFoundError,
+  noNodesFoundError,
+} from '@/ui/messages/errors.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 import { filterDefined } from '@/utils/objects.js';
 
@@ -42,12 +46,18 @@ const log = createLogger('dom');
 /**
  * Screenshot options after filtering undefined values.
  */
-type FilteredScreenshotOptions = { format?: 'png' | 'jpeg'; quality?: number; fullPage?: boolean };
+type FilteredScreenshotOptions = {
+  format?: 'png' | 'jpeg';
+  quality?: number;
+  fullPage?: boolean;
+  noResize?: boolean;
+  scroll?: string;
+};
 
 /**
  * Element screenshot options after filtering undefined values.
  */
-type FilteredElementOptions = { format?: 'png' | 'jpeg'; quality?: number };
+type FilteredElementOptions = { format?: 'png' | 'jpeg'; quality?: number; noResize?: boolean };
 
 /**
  * Data structure for semantic node with DOM context.
@@ -70,6 +80,8 @@ function buildPageScreenshotOptions(
     format: options.format,
     quality: options.quality,
     fullPage: options.fullPage,
+    noResize: options.resize === false,
+    scroll: options.scroll,
   }) as FilteredScreenshotOptions;
 }
 
@@ -85,6 +97,7 @@ function buildElementScreenshotOptions(
   return filterDefined({
     format: options.format,
     quality: options.quality,
+    noResize: options.resize === false,
   }) as FilteredElementOptions;
 }
 
@@ -116,11 +129,8 @@ async function resolveElementNodeId(options: DomScreenshotCommandOptions): Promi
     return resolveSelector(options.selector);
   }
 
-  throw new CommandError(
-    'Either --selector or --index must be provided for element screenshot',
-    {},
-    EXIT_CODES.INVALID_ARGUMENTS
-  );
+  const err = missingArgumentError('--selector "css-selector" or --index N from a previous query');
+  throw new CommandError(err.message, { suggestion: err.suggestion }, EXIT_CODES.INVALID_ARGUMENTS);
 }
 
 /**
@@ -369,9 +379,10 @@ async function handleIndexGetSemantic(index: number, options: DomGetCommandOptio
       const node = resolveNodeWithFallback(a11yNode, domContext, targetNode.nodeId);
 
       if (!node) {
+        const err = elementAtIndexNotFoundError(index, 'cached query');
         throw new CommandError(
-          elementNotFoundError(`index ${index}`),
-          {},
+          err.message,
+          { suggestion: err.suggestion },
           EXIT_CODES.RESOURCE_NOT_FOUND
         );
       }
@@ -453,9 +464,10 @@ async function handleSelectorGetSemantic(
       const node = resolveNodeWithFallback(a11yNode, domContext, nodeId);
 
       if (!node) {
+        const err = noNodesFoundError(selector);
         throw new CommandError(
-          elementNotFoundError(selector),
-          { suggestion: 'Verify the selector matches an element on the page' },
+          err.message,
+          { suggestion: err.suggestion },
           EXIT_CODES.RESOURCE_NOT_FOUND
         );
       }
@@ -726,6 +738,8 @@ export function registerDomCommands(program: Command): void {
     .option('--format <format>', 'Image format: png or jpeg (default: png)')
     .option('--quality <number>', 'JPEG quality 0-100 (default: 90)', parseInt)
     .option('--no-full-page', 'Capture viewport only (default: full page)')
+    .option('--no-resize', 'Disable auto-resize (full resolution)')
+    .option('--scroll <selector>', 'Scroll element into view before capture')
     .option('-f, --follow', 'Continuous capture mode to directory')
     .option('--interval <ms>', 'Capture interval for --follow (default: 1000)')
     .option('--limit <count>', 'Max frames for --follow')
