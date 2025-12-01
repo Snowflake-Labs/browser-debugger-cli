@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.7.0] - 2025-12-01
+
+### Added
+
+- **Form discovery command** (`bdg dom form`) - Agent-friendly form inspection (#130)
+  - Auto-discovers forms with semantic labels, current values, and validation state
+  - Suggests ready-to-use commands: `bdg dom fill 0 "<value>"`
+  - Form type inference: Login, Registration, Search, Address, Contact, Payment
+  - Relevance scoring auto-selects the most important form on multi-form pages
+  - `--all` flag to show all forms expanded
+  - `--brief` flag for quick scan (field names, types, required status only)
+  - Validation detection via native HTML5, aria-invalid, sibling errors, and error classes
+- **Shell quote damage detection** (#127) - Better agent error recovery
+  - Detects when shell interpretation damages quoted arguments
+  - Provides specific recovery suggestions for common patterns
+  - Helps agents retry with correct quoting
+
 ## [0.6.11] - 2025-11-27
 
 ### Added
