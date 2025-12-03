@@ -152,6 +152,105 @@ spawn(process.execPath, [daemonScriptPath], {
 
 ---
 
+## Bun-Specific Features for bdg
+
+Beyond runtime migration, Bun offers APIs that could improve bdg's architecture.
+
+### 1. `bun:sqlite` - Replace JSON Session Files
+
+**Current:** Session state stored as JSON files (`~/.bdg/session.meta.json`)
+
+**With Bun SQLite:**
+```typescript
+import { Database } from "bun:sqlite";
+
+const db = new Database("~/.bdg/session.db");
+db.run(`CREATE TABLE IF NOT EXISTS queries (
+  selector TEXT PRIMARY KEY,
+  nodeIds TEXT,
+  navigationId TEXT,
+  timestamp INTEGER
+)`);
+
+// Query cache with automatic invalidation
+db.query("SELECT * FROM queries WHERE navigationId = ?").all(currentNavId);
+```
+
+**Benefits:**
+- 3-6x faster than better-sqlite3, 8-9x faster than Deno SQLite
+- Query cache survives daemon restarts
+- Atomic transactions (no corrupt JSON on crash)
+- SQL queries for telemetry analysis
+
+---
+
+### 2. Native `WebSocket` - Replace `ws` Library
+
+**Current:** `ws` npm package for CDP connection
+
+**With Bun:**
+```typescript
+// Built-in, no dependency, same browser API
+const ws = new WebSocket(cdpUrl);
+ws.addEventListener("message", (event) => { ... });
+```
+
+**Benefits:**
+- Remove `ws` from dependencies
+- 2x throughput, 3x lower latency (see benchmarks above)
+- Identical API to browser WebSocket
+
+---
+
+### 3. `Bun.$` Shell - Cross-Platform Process Management
+
+**Current:** `child_process.spawn` with manual argument handling
+
+**With Bun Shell:**
+```typescript
+import { $ } from "bun";
+
+// Cross-platform, auto-escaped, readable
+await $`pkill -f "chrome.*remote-debugging"`;
+
+// Capture output safely
+const pids = await $`pgrep -f chrome`.text();
+```
+
+**Benefits:**
+- Works identically on Windows/Linux/macOS
+- Auto-escapes arguments (prevents injection)
+- Cleaner syntax for cleanup commands
+
+---
+
+### 4. `Bun.file()` / `Bun.write()` - Faster HAR Export
+
+**With Bun:**
+```typescript
+await Bun.write(harPath, JSON.stringify(harData, null, 2));
+```
+
+**Benefits:**
+- 2x faster for large files (uses `sendfile`/`copy_file_range` on Linux)
+- Lazy file loading (doesn't read until needed)
+
+---
+
+### Feature Adoption Priority
+
+| Feature | Impact | Effort | Recommendation |
+|---------|--------|--------|----------------|
+| SQLite for session/cache | High | Medium | Yes - significant improvement |
+| Native WebSocket | High | Low | Yes - drop `ws` dependency |
+| Bun.$ shell | Medium | Low | Yes - cleaner cleanup code |
+| Bun.file/write | Low | Low | Nice to have |
+| Bun.sleep | Trivial | Trivial | Minor cleanup |
+
+**Biggest wins:** SQLite for query cache + native WebSocket for CDP connection.
+
+---
+
 ## Risk Assessment
 
 | Risk | Impact | Likelihood | Mitigation |
@@ -239,10 +338,14 @@ spawn(process.execPath, [daemonScriptPath], {
 - [Bun Binary Size Discussion](https://github.com/oven-sh/bun/issues/5854)
 - [Bun Detached Process Feature Request](https://github.com/oven-sh/bun/issues/1442)
 - [Bun Cross-Compile Support](https://developer.mamezou-tech.com/en/blogs/2024/05/20/bun-cross-compile/)
+- [Bun SQLite Documentation](https://bun.com/docs/api/sqlite)
+- [Bun Shell Documentation](https://bun.com/docs/runtime/shell)
+- [Bun File I/O Documentation](https://bun.com/docs/api/file-io)
 
 ---
 
 ## Changelog
 
+- **2025-12-03** - Added Bun-specific features section (SQLite, native WebSocket, Bun.$, file I/O)
 - **2025-12-03** - Added benchmarked performance data, cross-platform distribution details, honest "is it noticeable?" assessment
 - **2025-12-03** - Initial research following Anthropic's Bun acquisition announcement
