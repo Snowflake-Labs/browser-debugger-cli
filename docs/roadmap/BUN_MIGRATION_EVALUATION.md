@@ -1,0 +1,205 @@
+# Bun Runtime Migration Evaluation
+
+**Last Updated:** 2025-12-03
+**Status:** Research Complete
+**Context:** [Anthropic acquired Bun](https://www.anthropic.com/news/anthropic-acquires-bun-as-claude-code-reaches-usd1b-milestone) (December 2025) as Claude Code reached $1B milestone
+
+---
+
+## Executive Summary
+
+| Metric | Assessment |
+|--------|------------|
+| **Feasibility** | High - bdg uses standard Node.js APIs |
+| **Effort** | Medium (1-2 weeks migration + testing) |
+| **Risk** | Low-Medium |
+| **Strategic Value** | High - aligns with Claude Code ecosystem |
+
+---
+
+## Strategic Context
+
+Anthropic's acquisition of Bun signals a shift toward Bun as the preferred JavaScript runtime for AI-assisted development tooling. For bdg (a CLI designed for AI agents), this creates alignment opportunities:
+
+- **Claude Code integration** - Bun-compiled binaries may become first-class citizens
+- **Distribution simplicity** - Single binary, no Node.js dependency
+- **Performance gains** - Faster startup, lower memory footprint
+- **Ecosystem alignment** - bdg + Claude Code + Bun as unified stack
+
+---
+
+## Pros
+
+### 1. Zero-Dependency Distribution
+```bash
+bun build --compile --target=bun ./src/index.ts --outfile=bdg
+```
+- Single 50-100MB executable
+- No Node.js installation required
+- Cross-compile for Linux/macOS/Windows from any platform
+
+### 2. Faster Performance
+- **4x HTTP throughput** in benchmarks (52K vs 13K req/s)
+- **2x faster** CPU-bound operations
+- Reduced startup time (bytecode compilation moves parsing to build-time)
+- Native TypeScript execution (no transpilation step in dev)
+
+### 3. Simplified Build Pipeline
+
+| Current (Node.js) | After (Bun) |
+|-------------------|-------------|
+| `tsc && tsc-alias` | `bun build --compile` |
+| `tsx --test` | `bun test` |
+| `npm install` (~10s) | `bun install` (~2s) |
+| Path aliases via `tsc-alias` | Native `tsconfig.json` paths |
+
+### 4. Strategic Ecosystem Alignment
+- Anthropic owns Bun; future Claude Code features may prioritize Bun
+- bdg as Claude Code skill benefits from same-runtime optimization
+- Potential for deeper integration (Bun APIs for agent tooling)
+
+### 5. All Dependencies Compatible
+| Package | Status | Notes |
+|---------|--------|-------|
+| `chrome-launcher` | Works | Tested in Bun v0.6.7+ |
+| `commander` | Works | Pure JavaScript |
+| `devtools-protocol` | Works | Type definitions only |
+| `ws` | Works | Can optionally use native Bun WebSocket |
+
+---
+
+## Cons
+
+### 1. Binary Size Overhead
+- **50-100MB** executable vs ~2KB npm package entry point
+- Mitigation: `--minify` saves MBs; UPX compression can reduce by ~67%
+- Trade-off: Larger download but zero runtime dependencies
+
+### 2. Detached Process Spawning (Daemon Architecture)
+```typescript
+// Current pattern in src/daemon/launcher.ts:100-109
+spawn(process.execPath, [daemonScriptPath], {
+  detached: true,  // ⚠️ Partial support in Bun
+  stdio: 'ignore',
+});
+```
+- `detached: true` has open [feature request](https://github.com/oven-sh/bun/issues/1442)
+- Workaround: Use `Bun.spawn()` with `unref()` - behavior may differ
+- Risk: Daemon might not fully detach; requires testing
+
+### 3. IPC Limitations
+- Cannot pass socket handles between processes (bdg doesn't use this)
+- File descriptors cannot be passed between workers
+- JSON serialization works; binary protocols need validation
+
+### 4. Less Mature Error Reporting
+- Bun's error messages sometimes less informative than Node.js
+- Stack traces may differ in edge cases
+- Debugging unfamiliar issues harder initially
+
+### 5. Documentation Gaps
+- Rapidly improving but Node.js has 15+ years of Stack Overflow answers
+- Some edge cases undocumented
+- Community smaller (though growing fast: 82K GitHub stars)
+
+### 6. Testing Unknown Unknowns
+- WebSocket ping/pong timing edge cases
+- Unix socket behavior under load
+- Signal handling (SIGTERM, SIGINT) in daemon
+- fsevents (macOS) native module in dev dependencies
+
+---
+
+## Risk Assessment
+
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|------------|------------|
+| Daemon doesn't detach properly | High | Medium | Test early; fallback to separate process |
+| WebSocket reconnection differs | Medium | Low | Keep `ws` library initially |
+| Binary too large for distribution | Low | Low | UPX compression; users accept trade-off |
+| Edge case Node.js API gaps | Medium | Low | Comprehensive test suite catches issues |
+| Build breaks on Bun updates | Low | Medium | Pin Bun version; test before upgrading |
+
+---
+
+## Migration Plan
+
+### Phase 1: Compatibility Testing (2-3 days)
+1. Run existing tests with `bun test`
+2. Test daemon spawn/unref behavior manually
+3. Test Unix socket IPC end-to-end
+4. Test WebSocket CDP communication under load
+
+### Phase 2: Build Pipeline (1-2 days)
+1. Create `bun build --compile` script
+2. Test cross-platform compilation (Linux, macOS, Windows)
+3. Add binary size optimization flags (`--minify`, `--bytecode`)
+4. Update CI/CD for binary releases (GitHub Actions)
+
+### Phase 3: Code Adjustments (2-3 days)
+1. Replace `child_process.spawn` with `Bun.spawn` if needed
+2. Optionally migrate `ws` to native Bun WebSocket
+3. Remove `tsc-alias` dependency (Bun handles paths natively)
+4. Update package.json scripts
+
+### Phase 4: Testing & Polish (3-4 days)
+1. End-to-end testing on all target platforms
+2. Smoke tests for binary distribution
+3. Performance benchmarking vs Node.js
+4. Documentation updates
+
+---
+
+## Recommended Approach
+
+**Hybrid Strategy** - maintain both runtimes initially:
+
+```json
+{
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "build:binary": "bun build --compile --minify --bytecode ./src/index.ts --outfile=bdg",
+    "build:binary:linux": "bun build --compile --minify --target=bun-linux-x64 ./src/index.ts --outfile=bdg-linux",
+    "build:binary:macos": "bun build --compile --minify --target=bun-darwin-arm64 ./src/index.ts --outfile=bdg-macos",
+    "build:binary:windows": "bun build --compile --minify --target=bun-windows-x64 ./src/index.ts --outfile=bdg.exe"
+  }
+}
+```
+
+**Benefits:**
+- Node.js remains primary for development and npm distribution
+- Bun binary as optional distribution for zero-dependency installs
+- Gradual migration path; can fully switch when confident
+- npm package users unaffected
+
+---
+
+## Decision Matrix
+
+| If you prioritize... | Recommendation |
+|---------------------|----------------|
+| Ecosystem alignment with Claude Code | Migrate to Bun |
+| Zero-dependency distribution | Migrate to Bun |
+| Maximum compatibility confidence | Stay on Node.js |
+| Smallest possible package | Stay on Node.js (npm) |
+| Fastest CLI startup | Migrate to Bun |
+| Enterprise stability guarantees | Wait 6 months, then migrate |
+
+---
+
+## References
+
+- [Anthropic Acquires Bun](https://www.anthropic.com/news/anthropic-acquires-bun-as-claude-code-reaches-usd1b-milestone)
+- [Bun Single-file Executable Docs](https://bun.com/docs/bundler/executables)
+- [Bun Node.js Compatibility](https://bun.com/docs/runtime/nodejs-apis)
+- [Bun net.Socket Reference](https://bun.sh/reference/node/net/Socket)
+- [Bun Child Process Spawn](https://bun.com/docs/runtime/child-process)
+- [Bun Binary Size Discussion](https://github.com/oven-sh/bun/issues/5854)
+- [Bun Detached Process Feature Request](https://github.com/oven-sh/bun/issues/1442)
+- [Bun Cross-Compile Support](https://developer.mamezou-tech.com/en/blogs/2024/05/20/bun-cross-compile/)
+
+---
+
+## Changelog
+
+- **2025-12-03** - Initial research following Anthropic's Bun acquisition announcement
