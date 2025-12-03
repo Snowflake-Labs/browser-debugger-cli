@@ -186,41 +186,92 @@ db.query("SELECT * FROM queries WHERE navigationId = ?").all(currentNavId);
 
 ### 2. Native `WebSocket` - Replace `ws` Library
 
-**Current:** `ws` npm package for CDP connection
+**Current:** `ws` npm package with Node.js event API
+```typescript
+import WebSocket from 'ws';
+const ws = new WebSocket(cdpUrl, {
+  perMessageDeflate: false,
+  handshakeTimeout: 5000,
+});
+ws.on('message', (data) => { ... });
+ws.ping();  // Manual keepalive
+```
 
 **With Bun:**
 ```typescript
-// Built-in, no dependency, same browser API
+// No import - global like browsers
 const ws = new WebSocket(cdpUrl);
-ws.addEventListener("message", (event) => { ... });
+ws.addEventListener("message", (event) => {
+  const data = event.data;  // string or ArrayBuffer
+});
+// Ping/pong handled automatically by runtime
 ```
+
+**Migration changes:**
+| Aspect | `ws` library | Bun native |
+|--------|--------------|------------|
+| Import | `import WebSocket from 'ws'` | Global |
+| Events | `.on('message', cb)` | `.addEventListener()` |
+| Ping/pong | Manual `ws.ping()` | Automatic |
+| Backpressure | Manual | `.send()` returns status |
 
 **Benefits:**
 - Remove `ws` from dependencies
-- 2x throughput, 3x lower latency (see benchmarks above)
-- Identical API to browser WebSocket
+- 7x throughput improvement (Bun benchmark)
+- Backpressure handling: `.send()` returns `-1` (queued), `0` (dropped), `1+` (sent)
+- Binary data support for future CDP features
 
 ---
 
 ### 3. `Bun.$` Shell - Cross-Platform Process Management
 
-**Current:** `child_process.spawn` with manual argument handling
+**Current:** Platform-specific spawn with manual escaping
+```typescript
+import { spawn } from 'child_process';
+
+// Platform-specific logic
+if (process.platform === 'darwin') {
+  spawn('pkill', ['-f', 'Google Chrome.*--remote-debugging']);
+} else if (process.platform === 'linux') {
+  spawn('pkill', ['-f', 'chrome.*--remote-debugging']);
+}
+// Windows: completely different approach needed
+```
 
 **With Bun Shell:**
 ```typescript
 import { $ } from "bun";
 
-// Cross-platform, auto-escaped, readable
-await $`pkill -f "chrome.*remote-debugging"`;
+// Cross-platform - same code everywhere
+const result = await $`pgrep -f "chrome.*remote-debugging"`.nothrow().text();
+const pids = result.trim().split('\n').filter(Boolean);
 
-// Capture output safely
-const pids = await $`pgrep -f chrome`.text();
+for (const pid of pids) {
+  await $`kill ${pid}`.nothrow();
+}
+
+// Session cleanup with glob
+await $`rm -f ~/.bdg/*.{sock,pid,json}`.nothrow();
+
+// Check Chrome installed
+const chrome = await $`which google-chrome || which chromium`.nothrow().text();
 ```
 
+**Key features:**
+| Feature | Description |
+|---------|-------------|
+| `.nothrow()` | Don't crash on non-zero exit |
+| `.text()` | Capture output as string |
+| `.lines()` | Iterate output line-by-line |
+| `.quiet()` | Suppress printing |
+| Glob patterns | `*.{sock,pid}` works natively |
+| Auto-escaping | `${variable}` is injection-safe |
+
 **Benefits:**
-- Works identically on Windows/Linux/macOS
-- Auto-escapes arguments (prevents injection)
-- Cleaner syntax for cleanup commands
+- Same code runs on Windows/Linux/macOS
+- Built-in commands: `rm`, `mkdir`, `cat`, `which`, `ls`
+- No shell injection vulnerabilities
+- Cleaner than spawn + manual argument arrays
 
 ---
 
@@ -340,12 +391,14 @@ await Bun.write(harPath, JSON.stringify(harData, null, 2));
 - [Bun Cross-Compile Support](https://developer.mamezou-tech.com/en/blogs/2024/05/20/bun-cross-compile/)
 - [Bun SQLite Documentation](https://bun.com/docs/api/sqlite)
 - [Bun Shell Documentation](https://bun.com/docs/runtime/shell)
+- [Bun WebSocket Documentation](https://bun.com/docs/runtime/http/websockets)
 - [Bun File I/O Documentation](https://bun.com/docs/api/file-io)
 
 ---
 
 ## Changelog
 
+- **2025-12-03** - Expanded WebSocket migration details (API changes, backpressure) and Bun Shell examples (cleanup, globs)
 - **2025-12-03** - Added Bun-specific features section (SQLite, native WebSocket, Bun.$, file I/O)
 - **2025-12-03** - Added benchmarked performance data, cross-platform distribution details, honest "is it noticeable?" assessment
 - **2025-12-03** - Initial research following Anthropic's Bun acquisition announcement
