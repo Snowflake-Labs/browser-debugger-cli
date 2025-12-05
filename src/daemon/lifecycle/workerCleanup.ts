@@ -94,9 +94,11 @@ export async function cleanupWorker(
 
     if (chrome && chromePid) {
       await terminateChrome(chrome, chromePid, log);
-    } else if (!chrome) {
+    } else if (!chrome && cdp) {
+      // External Chrome mode (connected via --chrome-ws-url)
       console.error(`[worker] ${chromeExternalSkipTerminationMessage()}`);
     }
+    // If both chrome and cdp are null, Chrome launch failed - nothing to terminate
 
     writeOutput(reason, telemetryStore, log);
 
