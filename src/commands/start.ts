@@ -4,7 +4,7 @@ import type { Command } from 'commander';
 
 import { startSessionViaDaemon } from '@/commands/shared/startHelpers.js';
 import { positiveIntRule } from '@/commands/shared/validation.js';
-import { DEFAULT_DEBUG_PORT, PORT_OPTION_DESCRIPTION } from '@/constants.js';
+import { PORT_OPTION_DESCRIPTION } from '@/constants.js';
 import type { TelemetryType } from '@/types';
 import { startCommandHelpMessage } from '@/ui/messages/commands.js';
 import { genericError } from '@/ui/messages/errors.js';
@@ -42,7 +42,7 @@ interface CollectorOptions {
  */
 function applyCollectorOptions(command: Command): Command {
   return command
-    .option('-p, --port <number>', PORT_OPTION_DESCRIPTION, DEFAULT_DEBUG_PORT)
+    .option('-p, --port <number>', PORT_OPTION_DESCRIPTION)
     .option(
       '-t, --timeout <seconds>',
       'Auto-stop after timeout in seconds (unlimited if not specified)'
