@@ -51,7 +51,8 @@ function applyCollectorOptions(command: Command): Command {
     .option('-a, --all', 'Include all data (disable filtering of tracking/analytics)', false)
     .option('-m, --max-body-size <megabytes>', 'Maximum response body size in MB', '5')
     .option('--compact', 'Use compact JSON format (no indentation) for output files', false)
-    .option('--no-headless', 'Show browser window (default: headless)')
+    .option('--headless', 'Run in headless mode', true)
+    .option('--no-headless', 'Show browser window')
     .option(
       '--chrome-ws-url <url>',
       'Connect to existing Chrome via WebSocket URL (e.g., ws://localhost:9222/devtools/page/...)'
