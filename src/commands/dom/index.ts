@@ -663,8 +663,15 @@ async function handleDomEval(script: string, options: DomEvalCommandOptions): Pr
 
       const metadata = getValidatedSessionMetadata();
 
-      const portRule = positiveIntRule({ min: 1, max: 65535, default: 9222 });
-      const port = portRule.validate(options.port);
+      // Use port from session metadata, not CLI option
+      const port = metadata.port;
+      if (!port) {
+        throw new CommandError(
+          'Session metadata missing port',
+          { suggestion: 'Restart the session with: bdg stop && bdg <url>' },
+          EXIT_CODES.RESOURCE_NOT_FOUND
+        );
+      }
       await verifyTargetExists(metadata, port);
 
       const cdp = new CDPConnection();

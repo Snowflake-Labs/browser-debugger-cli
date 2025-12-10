@@ -7,8 +7,13 @@ import * as chromeLauncher from 'chrome-launcher';
 import type { LaunchedChrome, Logger } from './types.js';
 import type { Options as ChromeLaunchOptions } from 'chrome-launcher';
 
-import { BDG_CHROME_PREFS, DEFAULT_CDP_PORT, CHROME_PROFILE_DIR } from '@/constants.js';
-import { DEFAULT_CHROME_LOG_LEVEL, DEFAULT_CHROME_HANDLE_SIGINT } from '@/constants.js';
+import {
+  BDG_CHROME_PREFS,
+  DEFAULT_CDP_PORT,
+  CHROME_PROFILE_DIR,
+  DEFAULT_CHROME_LOG_LEVEL,
+  DEFAULT_CHROME_HANDLE_SIGINT,
+} from '@/constants.js';
 import {
   chromeLaunchSuccessMessage,
   chromeUserDataDirMessage,
@@ -193,17 +198,30 @@ export async function launchChrome(options: LaunchOptions = {}): Promise<Launche
 /**
  * Get the default persistent user-data-dir path.
  *
- * We use a persistent directory to maintain browser state (cookies, localStorage,
- * session storage) across bdg sessions. This prevents users from having to
- * repeatedly log in or accept cookie consent dialogs during debugging workflows.
+ * Uses the session directory ($BDG_SESSION_DIR) to store Chrome profile data,
+ * ensuring each session has its own isolated Chrome profile. This prevents
+ * SingletonLock conflicts when multiple agents run concurrently.
  *
- * @param baseDir - Optional base directory (defaults to OS temp dir). Allows injection for testing or custom locations.
- * @returns Absolute path to persistent user-data-dir
+ * Note: Login state is NOT shared between sessions. Each session starts fresh.
+ * For shared login state across sessions, use --user-data-dir to specify a
+ * shared location explicitly.
+ *
+ * @param baseDir - Optional base directory (defaults to session dir). Allows injection for testing or custom locations.
+ * @returns Absolute path to session-isolated user-data-dir
  * @throws Error if user data directory cannot be created due to permission issues
  */
 function getPersistentUserDataDir(baseDir?: string): string {
-  const dir = baseDir ?? os.tmpdir();
-  const userDataDir = path.join(dir, 'bdg-chrome', CHROME_PROFILE_DIR);
+  // Inline session dir logic to avoid circular dependency with session module
+  const getDefaultSessionDir = (): string => {
+    const override = process.env['BDG_SESSION_DIR'];
+    if (override && override.trim().length > 0) {
+      return path.isAbsolute(override) ? override : path.resolve(override);
+    }
+    return path.join(os.homedir(), '.bdg');
+  };
+
+  const dir = baseDir ?? getDefaultSessionDir();
+  const userDataDir = path.join(dir, CHROME_PROFILE_DIR);
 
   if (!fs.existsSync(userDataDir)) {
     try {

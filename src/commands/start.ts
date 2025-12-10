@@ -26,7 +26,7 @@ interface CollectorOptions {
   maxBodySize?: string;
   /** Use compact JSON format (no indentation) for output files. */
   compact?: boolean;
-  /** Launch Chrome in headless mode (no visible browser window). */
+  /** Launch Chrome in headless mode (default: true). Use --no-headless to show window. */
   headless?: boolean;
   /** WebSocket URL for connecting to existing Chrome instance (skips Chrome launch). */
   chromeWsUrl?: string;
@@ -47,11 +47,11 @@ function applyCollectorOptions(command: Command): Command {
       '-t, --timeout <seconds>',
       'Auto-stop after timeout in seconds (unlimited if not specified)'
     )
-    .option('-u, --user-data-dir <path>', 'Chrome user data directory', '~/.bdg/chrome-profile')
+    .option('-u, --user-data-dir <path>', 'Chrome user data directory (defaults to session dir)')
     .option('-a, --all', 'Include all data (disable filtering of tracking/analytics)', false)
     .option('-m, --max-body-size <megabytes>', 'Maximum response body size in MB', '5')
     .option('--compact', 'Use compact JSON format (no indentation) for output files', false)
-    .option('--headless', 'Launch Chrome in headless mode (no visible browser window)', false)
+    .option('--no-headless', 'Show browser window (default: headless)')
     .option(
       '--chrome-ws-url <url>',
       'Connect to existing Chrome via WebSocket URL (e.g., ws://localhost:9222/devtools/page/...)'
@@ -96,7 +96,7 @@ function buildSessionOptions(options: CollectorOptions): {
     includeAll: options.all ?? false,
     maxBodySize: maxBodySizeMB !== undefined ? maxBodySizeMB * 1024 * 1024 : undefined,
     compact: options.compact ?? false,
-    headless: options.headless ?? false,
+    headless: options.headless ?? true,
     chromeWsUrl: options.chromeWsUrl,
     quiet: options.quiet ?? false,
   };

@@ -452,8 +452,14 @@ async function withCDPConnection<T>(fn: (cdp: CDPConnection) => Promise<T>): Pro
 
   validateActiveSession();
   const metadata = getValidatedSessionMetadata();
-  const port = 9222;
-  await verifyTargetExists(metadata, port);
+  if (!metadata.port) {
+    throw new CommandError(
+      'Session metadata missing port',
+      { suggestion: 'Restart the session with: bdg stop && bdg <url>' },
+      EXIT_CODES.SESSION_FILE_ERROR
+    );
+  }
+  await verifyTargetExists(metadata, metadata.port);
 
   const cdp = new CDPConnection();
   if (!metadata.webSocketDebuggerUrl) {
