@@ -26,12 +26,22 @@ interface CollectorOptions {
   maxBodySize?: string;
   /** Use compact JSON format (no indentation) for output files. */
   compact?: boolean;
-  /** Launch Chrome in headless mode (default: true). Use --no-headless to show window. */
+  /** Launch Chrome in headless mode. Default: true if no display, false if display available. */
   headless?: boolean;
   /** WebSocket URL for connecting to existing Chrome instance (skips Chrome launch). */
   chromeWsUrl?: string;
   /** Quiet mode - suppress verbose landing page output for AI agents. */
   quiet?: boolean;
+}
+
+/**
+ * Check if a display server (X11 or Wayland) is available.
+ * Used to determine default headless mode.
+ */
+function hasDisplay(): boolean {
+  const display = process.env['DISPLAY'];
+  const wayland = process.env['WAYLAND_DISPLAY'];
+  return (display !== undefined && display !== '') || (wayland !== undefined && wayland !== '');
 }
 
 /**
@@ -41,6 +51,9 @@ interface CollectorOptions {
  * @returns The modified Command instance with all telemetry options applied
  */
 function applyCollectorOptions(command: Command): Command {
+  // Default to headless if no display available
+  const defaultHeadless = !hasDisplay();
+
   return command
     .option('-p, --port <number>', PORT_OPTION_DESCRIPTION)
     .option(
@@ -51,7 +64,7 @@ function applyCollectorOptions(command: Command): Command {
     .option('-a, --all', 'Include all data (disable filtering of tracking/analytics)', false)
     .option('-m, --max-body-size <megabytes>', 'Maximum response body size in MB', '5')
     .option('--compact', 'Use compact JSON format (no indentation) for output files', false)
-    .option('--headless', 'Run in headless mode', true)
+    .option('--headless', 'Run in headless mode (auto if no display)', defaultHeadless)
     .option('--no-headless', 'Show browser window')
     .option(
       '--chrome-ws-url <url>',
@@ -97,7 +110,7 @@ function buildSessionOptions(options: CollectorOptions): {
     includeAll: options.all ?? false,
     maxBodySize: maxBodySizeMB !== undefined ? maxBodySizeMB * 1024 * 1024 : undefined,
     compact: options.compact ?? false,
-    headless: options.headless ?? true,
+    headless: options.headless ?? !hasDisplay(),
     chromeWsUrl: options.chromeWsUrl,
     quiet: options.quiet ?? false,
   };

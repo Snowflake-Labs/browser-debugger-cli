@@ -16,8 +16,9 @@ bdg stop                         # End session
 ## Session Management
 
 ```bash
-bdg <url>                  # Start session (headless, 1920x1080)
-bdg <url> --no-headless    # Start with visible browser window
+bdg <url>                  # Start session (1920x1080, headless if no display)
+bdg <url> --headless       # Force headless mode
+bdg <url> --no-headless    # Force visible browser window
 bdg status                 # Check session status
 bdg stop                   # Stop and save output
 bdg cleanup --force        # Kill stale session
@@ -138,6 +139,43 @@ bdg cleanup --aggressive  # Kill all Chrome processes
 **Chrome won't launch?** Run `bdg cleanup --aggressive` then retry.
 
 **Session stuck?** Run `bdg cleanup --force` to reset.
+
+## Verification Best Practices
+
+**Prefer DOM queries over screenshots** for verification:
+
+```bash
+# GOOD: Fast, precise, scriptable
+bdg cdp Runtime.evaluate --params '{
+  "expression": "document.querySelector(\".error-message\")?.textContent",
+  "returnByValue": true
+}'
+
+# GOOD: Check element exists
+bdg dom query ".submit-btn"
+
+# GOOD: Check text content
+bdg cdp Runtime.evaluate --params '{
+  "expression": "document.body.innerText.includes(\"Success\")",
+  "returnByValue": true
+}'
+
+# AVOID: Screenshots for simple verification (slow, requires visual inspection)
+bdg dom screenshot /tmp/check.png  # Only use when you need visual proof
+```
+
+**When to use screenshots:**
+- Visual regression testing
+- Capturing proof for user review
+- Debugging layout issues
+- When DOM structure is unknown
+
+**When to use DOM queries:**
+- Verifying text content appeared
+- Checking element exists/visible
+- Validating form state
+- Counting elements
+- Any programmatic assertion
 
 ## When NOT to Use bdg
 
