@@ -20,9 +20,20 @@ bdg <url>                  # Start session (1920x1080, headless if no display)
 bdg <url> --headless       # Force headless mode
 bdg <url> --no-headless    # Force visible browser window
 bdg status                 # Check session status
+bdg peek                   # Preview data without stopping
 bdg stop                   # Stop and save output
 bdg cleanup --force        # Kill stale session
 bdg cleanup --aggressive   # Kill all Chrome processes
+```
+
+**Sessions run indefinitely by default** (no timeout). With HMR/hot-reload dev servers, keep the session running:
+
+```bash
+bdg http://localhost:5173      # Start once
+# ... make code changes, HMR updates the page ...
+bdg dom screenshot /tmp/s.png  # Check anytime
+bdg peek                       # Preview collected data
+# No need to stop/restart - Chrome stays on the page
 ```
 
 ## Screenshots
