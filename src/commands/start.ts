@@ -32,6 +32,8 @@ interface CollectorOptions {
   chromeWsUrl?: string;
   /** Quiet mode - suppress verbose landing page output for AI agents. */
   quiet?: boolean;
+  /** Custom Chrome flags (space-separated string). */
+  chromeFlags?: string;
 }
 
 /**
@@ -56,7 +58,11 @@ function applyCollectorOptions(command: Command): Command {
       '--chrome-ws-url <url>',
       'Connect to existing Chrome via WebSocket URL (e.g., ws://localhost:9222/devtools/page/...)'
     )
-    .option('-q, --quiet', 'Quiet mode - minimal output for AI agents', false);
+    .option('-q, --quiet', 'Quiet mode - minimal output for AI agents', false)
+    .option(
+      '--chrome-flags <flags>',
+      'Custom Chrome flags (space-separated, e.g., --chrome-flags="--ignore-certificate-errors --disable-web-security")'
+    );
 }
 
 /**
@@ -75,6 +81,7 @@ function buildSessionOptions(options: CollectorOptions): {
   headless: boolean;
   chromeWsUrl: string | undefined;
   quiet: boolean;
+  chromeFlags: string[] | undefined;
 } {
   const maxBodySizeRule = positiveIntRule({ min: 1, max: 100, required: false });
   const timeoutRule = positiveIntRule({ min: 1, max: 3600, required: false });
@@ -89,6 +96,12 @@ function buildSessionOptions(options: CollectorOptions): {
     userDataDir = userDataDir.replace(/^~/, os.homedir());
   }
 
+  // Merge env var flags with CLI flags (CLI flags come after, taking precedence)
+  const envFlags = process.env['BDG_CHROME_FLAGS']?.split(' ').filter(Boolean) ?? [];
+  const cliFlags = options.chromeFlags?.split(' ').filter(Boolean) ?? [];
+  const combinedFlags = [...envFlags, ...cliFlags];
+  const chromeFlags = combinedFlags.length > 0 ? combinedFlags : undefined;
+
   return {
     port: parseInt(options.port, 10),
     timeout,
@@ -99,6 +112,7 @@ function buildSessionOptions(options: CollectorOptions): {
     headless: options.headless ?? false,
     chromeWsUrl: options.chromeWsUrl,
     quiet: options.quiet ?? false,
+    chromeFlags,
   };
 }
 
