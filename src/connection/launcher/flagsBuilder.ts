@@ -62,6 +62,36 @@ export function isDocker(): boolean {
 }
 
 /**
+ * Parse custom Chrome flags from BDG_CHROME_FLAGS environment variable.
+ *
+ * NOTE: This function is deprecated for use in the daemon/worker. The env var
+ * is now parsed by the CLI (src/commands/start.ts) and passed via IPC to ensure
+ * the env var set when running `bdg` reaches the worker process.
+ *
+ * Supports space-separated flags, with proper handling of flags containing
+ * equals signs (e.g., --window-size=1920,1080).
+ *
+ * @returns Array of Chrome flags parsed from environment variable
+ * @deprecated Use CLI parsing instead - kept for test compatibility
+ *
+ * @example
+ * ```bash
+ * # Single flag
+ * BDG_CHROME_FLAGS="--ignore-certificate-errors" bdg https://localhost:5173
+ *
+ * # Multiple flags
+ * BDG_CHROME_FLAGS="--ignore-certificate-errors --disable-web-security" bdg https://localhost:5173
+ * ```
+ */
+export function getEnvChromeFlags(): string[] {
+  const envFlags = process.env['BDG_CHROME_FLAGS'];
+  if (!envFlags) {
+    return [];
+  }
+  return envFlags.split(' ').filter(Boolean);
+}
+
+/**
  * Build Chrome flags array from launch options.
  *
  * Uses chrome-launcher default flags as base (unless ignoreDefaultFlags is true)
@@ -70,6 +100,9 @@ export function isDocker(): boolean {
  *
  * When running in Docker, automatically adds GPU-disabling flags to work around
  * graphics limitations in containerized environments.
+ *
+ * Custom flags are passed via the chromeFlags option. The BDG_CHROME_FLAGS env var
+ * is parsed by the CLI and merged into chromeFlags before reaching this function.
  *
  * @param options - Launch options containing flag preferences
  * @returns Array of Chrome command-line flags
@@ -100,15 +133,12 @@ export function buildChromeFlags(options: FlagsBuilderOptions): string[] {
 
   const dockerFlags = isDocker() ? DOCKER_CHROME_FLAGS : [];
 
+  // Custom flags from CLI option (env var BDG_CHROME_FLAGS is parsed by CLI and passed here)
+  const customFlags = options.chromeFlags ?? [];
+
   if (options.headless) {
-    return [
-      HEADLESS_FLAG,
-      ...baseFlags,
-      ...bdgFlags,
-      ...dockerFlags,
-      ...(options.chromeFlags ?? []),
-    ];
+    return [HEADLESS_FLAG, ...baseFlags, ...bdgFlags, ...dockerFlags, ...customFlags];
   }
 
-  return [...baseFlags, ...bdgFlags, ...dockerFlags, ...(options.chromeFlags ?? [])];
+  return [...baseFlags, ...bdgFlags, ...dockerFlags, ...customFlags];
 }
