@@ -396,6 +396,17 @@ function handleDescribeMethod(methodName: string): {
 }
 
 /**
+ * CDP methods blocked from raw execution due to output issues.
+ * These methods return large binary data that corrupts terminal/agent sessions.
+ */
+const BLOCKED_CDP_METHODS: Record<string, { alternative: string; reason: string }> = {
+  'Page.captureScreenshot': {
+    alternative: 'bdg dom screenshot [path]',
+    reason: 'Returns large base64 data that corrupts terminal sessions',
+  },
+};
+
+/**
  * Handle execute method mode: Call CDP method.
  *
  * @param methodName - Method name (case-insensitive)
@@ -414,6 +425,16 @@ async function handleExecuteMethod(
   hint?: string;
 }> {
   const normalized = normalizeMethod(methodName);
+
+  // Block methods that return large binary data
+  // Output error to stderr only and exit - no JSON output to avoid confusing pipelines
+  if (normalized && BLOCKED_CDP_METHODS[normalized]) {
+    const blocked = BLOCKED_CDP_METHODS[normalized];
+    console.error(`Error: ${normalized} is blocked via raw CDP`);
+    console.error(`Reason: ${blocked.reason}`);
+    console.error(`Use: ${blocked.alternative}`);
+    process.exit(1);
+  }
   if (!normalized) {
     const similar = findSimilarMethods(methodName);
     const suggestions = ['Use: bdg cdp --search <keyword> (to search for methods)'];

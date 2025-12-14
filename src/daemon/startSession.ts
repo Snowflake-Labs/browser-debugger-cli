@@ -12,6 +12,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
+import { getSessionPort } from '@/session/port.js';
 import type { TelemetryType } from '@/types.js';
 import { createLogger } from '@/ui/logging/index.js';
 import {
@@ -123,9 +124,14 @@ export async function launchSessionInWorker(
     );
   }
 
+  // Get or allocate a port for this session
+  // If options.port is provided, it takes precedence
+  // Otherwise, we use/allocate a session-specific port for isolation
+  const port = await getSessionPort(options.port);
+
   const config = filterDefined({
     url,
-    port: options.port ?? 9222,
+    port,
     timeout: options.timeout,
     telemetry: options.telemetry,
     includeAll: options.includeAll,

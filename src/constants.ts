@@ -65,6 +65,7 @@ export const BDG_CHROME_FLAGS = [
   '--disable-notifications', // Suppress notification permission prompts
   '--disable-features=Translate,SessionCrashedBubble', // Suppress Google Translate popup and SessionCrashedBubble
   '--disable-background-mode', // Attempt to prevent focus stealing (doesn't work reliably on macOS)
+  '--window-size=1920,1080', // Default viewport for consistent screenshots
 ];
 
 /**

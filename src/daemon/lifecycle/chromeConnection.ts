@@ -77,8 +77,6 @@ async function setupLaunchedChrome(
   telemetryStore: TelemetryStore,
   log: Logger
 ): Promise<LaunchedChrome> {
-  log.info(`Launching Chrome on port ${config.port}...`);
-
   const chrome = await launchChrome({
     port: config.port,
     logger: log,

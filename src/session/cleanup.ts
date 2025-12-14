@@ -56,10 +56,38 @@ function killCachedChromeProcess(reason: string): void {
 }
 
 /**
+ * Get the BDG_SESSION_DIR for a given process by reading /proc/PID/environ.
+ *
+ * @param pid - Process ID to check
+ * @returns Session directory or null if not found/accessible
+ */
+function getProcessSessionDir(pid: number): string | null {
+  try {
+    const environPath = `/proc/${pid}/environ`;
+    const environ = fs.readFileSync(environPath, 'utf-8');
+    // Environment variables are null-separated
+    const vars = environ.split('\0');
+    for (const v of vars) {
+      if (v.startsWith('BDG_SESSION_DIR=')) {
+        return v.substring('BDG_SESSION_DIR='.length);
+      }
+    }
+    return null;
+  } catch {
+    // Process may have exited or we don't have permissions
+    return null;
+  }
+}
+
+/**
  * Find all orphaned daemon processes and return their PIDs.
  *
- * Orphaned daemons are node processes running dist/daemon.js that are not
- * the currently tracked daemon in the PID file.
+ * Orphaned daemons are node processes running dist/daemon.js that:
+ * 1. Are not the currently tracked daemon in the PID file
+ * 2. Belong to the same BDG_SESSION_DIR as the current session
+ *
+ * This ensures that daemons from other sessions (with different BDG_SESSION_DIR)
+ * are NOT killed, providing proper session isolation.
  *
  * @returns Array of orphaned daemon PIDs
  */
@@ -69,6 +97,7 @@ async function findOrphanedDaemons(): Promise<number[]> {
   try {
     const daemonPidPath = getSessionFilePath('DAEMON_PID');
     const currentDaemonPid = readPidFromFile(daemonPidPath);
+    const currentSessionDir = process.env['BDG_SESSION_DIR'] ?? null;
 
     const psCommand =
       process.platform === 'win32'
@@ -104,9 +133,28 @@ async function findOrphanedDaemons(): Promise<number[]> {
         continue;
       }
 
-      if (isProcessAlive(pid)) {
-        orphanedPids.push(pid);
+      if (!isProcessAlive(pid)) {
+        continue;
       }
+
+      // Cross-session safety: Only consider daemons from THIS session directory
+      // Daemons from other sessions should not be touched
+      if (process.platform !== 'win32') {
+        const processSessionDir = getProcessSessionDir(pid);
+        // If we can determine the daemon's session dir and it differs from ours, skip it
+        if (processSessionDir !== null && processSessionDir !== currentSessionDir) {
+          log.debug(`Skipping daemon ${pid} from different session: ${processSessionDir}`);
+          continue;
+        }
+        // If process session dir is null but current session dir is set,
+        // this daemon may be from a session without BDG_SESSION_DIR - still skip for safety
+        if (processSessionDir === null && currentSessionDir !== null) {
+          log.debug(`Skipping daemon ${pid} with unknown session dir (safety)`);
+          continue;
+        }
+      }
+
+      orphanedPids.push(pid);
     }
   } catch (error) {
     logDebugError(log, 'find orphaned daemons', error);

@@ -18,7 +18,7 @@ import type { ChildProcess } from 'child_process';
 import { DaemonStartupError } from '@/daemon/errors.js';
 import { cleanupStaleSession } from '@/session/cleanup.js';
 import { acquireDaemonLock, releaseDaemonLock } from '@/session/lock.js';
-import { getSessionFilePath } from '@/session/paths.js';
+import { ensureSessionDir, getSessionDir, getSessionFilePath } from '@/session/paths.js';
 import { createLogger } from '@/ui/logging/index.js';
 import { delay } from '@/utils/async.js';
 import { getErrorMessage } from '@/utils/errors.js';
@@ -97,14 +97,22 @@ export async function launchDaemon(): Promise<ChildProcess> {
 
     log.debug(`Starting daemon: ${daemonScriptPath}`);
 
+    // Ensure session directory exists and create log file for daemon output
+    ensureSessionDir();
+    const logPath = join(getSessionDir(), 'daemon.log');
+    const logFd = fs.openSync(logPath, 'a');
+
     const daemon = spawn(process.execPath, [daemonScriptPath], {
       detached: true,
-      stdio: 'ignore', // Fully detached - daemon must not depend on parent's stdio
+      stdio: ['ignore', logFd, logFd], // Redirect stdout/stderr to log file
       env: {
         ...process.env,
         BDG_DAEMON: '1', // Mark as daemon worker
       },
     });
+
+    // Close the fd in the parent process (child has its own copy)
+    fs.closeSync(logFd);
 
     daemon.unref();
 

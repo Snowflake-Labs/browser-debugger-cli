@@ -22,6 +22,7 @@ const SESSION_FILES = {
   DAEMON_PID: 'daemon.pid',
   DAEMON_SOCKET: 'daemon.sock',
   DAEMON_LOCK: 'daemon.lock',
+  PORT: 'port.txt',
 } as const;
 
 const SESSION_DIR_OVERRIDE_ENV = 'BDG_SESSION_DIR';

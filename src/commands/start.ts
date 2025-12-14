@@ -4,7 +4,7 @@ import type { Command } from 'commander';
 
 import { startSessionViaDaemon } from '@/commands/shared/startHelpers.js';
 import { positiveIntRule } from '@/commands/shared/validation.js';
-import { DEFAULT_DEBUG_PORT, PORT_OPTION_DESCRIPTION } from '@/constants.js';
+import { PORT_OPTION_DESCRIPTION } from '@/constants.js';
 import type { TelemetryType } from '@/types';
 import { startCommandHelpMessage } from '@/ui/messages/commands.js';
 import { genericError } from '@/ui/messages/errors.js';
@@ -26,7 +26,7 @@ interface CollectorOptions {
   maxBodySize?: string;
   /** Use compact JSON format (no indentation) for output files. */
   compact?: boolean;
-  /** Launch Chrome in headless mode (no visible browser window). */
+  /** Launch Chrome in headless mode. Default: true if no display, false if display available. */
   headless?: boolean;
   /** WebSocket URL for connecting to existing Chrome instance (skips Chrome launch). */
   chromeWsUrl?: string;
@@ -37,23 +37,37 @@ interface CollectorOptions {
 }
 
 /**
+ * Check if a display server (X11 or Wayland) is available.
+ * Used to determine default headless mode.
+ */
+function hasDisplay(): boolean {
+  const display = process.env['DISPLAY'];
+  const wayland = process.env['WAYLAND_DISPLAY'];
+  return (display !== undefined && display !== '') || (wayland !== undefined && wayland !== '');
+}
+
+/**
  * Apply shared telemetry options to a command
  *
  * @param command - Commander.js Command instance to apply options to
  * @returns The modified Command instance with all telemetry options applied
  */
 function applyCollectorOptions(command: Command): Command {
+  // Default to headless if no display available
+  const defaultHeadless = !hasDisplay();
+
   return command
-    .option('-p, --port <number>', PORT_OPTION_DESCRIPTION, DEFAULT_DEBUG_PORT)
+    .option('-p, --port <number>', PORT_OPTION_DESCRIPTION)
     .option(
       '-t, --timeout <seconds>',
       'Auto-stop after timeout in seconds (unlimited if not specified)'
     )
-    .option('-u, --user-data-dir <path>', 'Chrome user data directory', '~/.bdg/chrome-profile')
+    .option('-u, --user-data-dir <path>', 'Chrome user data directory (defaults to session dir)')
     .option('-a, --all', 'Include all data (disable filtering of tracking/analytics)', false)
     .option('-m, --max-body-size <megabytes>', 'Maximum response body size in MB', '5')
     .option('--compact', 'Use compact JSON format (no indentation) for output files', false)
-    .option('--headless', 'Launch Chrome in headless mode (no visible browser window)', false)
+    .option('--headless', 'Run in headless mode (auto if no display)', defaultHeadless)
+    .option('--no-headless', 'Show browser window')
     .option(
       '--chrome-ws-url <url>',
       'Connect to existing Chrome via WebSocket URL (e.g., ws://localhost:9222/devtools/page/...)'
@@ -109,7 +123,7 @@ function buildSessionOptions(options: CollectorOptions): {
     includeAll: options.all ?? false,
     maxBodySize: maxBodySizeMB !== undefined ? maxBodySizeMB * 1024 * 1024 : undefined,
     compact: options.compact ?? false,
-    headless: options.headless ?? false,
+    headless: options.headless ?? !hasDisplay(),
     chromeWsUrl: options.chromeWsUrl,
     quiet: options.quiet ?? false,
     chromeFlags,
