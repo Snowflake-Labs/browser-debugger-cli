@@ -151,6 +151,27 @@ bdg cleanup --aggressive  # Kill all Chrome processes
 
 **Session stuck?** Run `bdg cleanup --force` to reset.
 
+### Custom Chrome Flags
+
+Use `--chrome-flags` or `BDG_CHROME_FLAGS` for self-signed certificates, CORS, etc.:
+
+```bash
+# CLI option
+bdg https://localhost:5173 --chrome-flags="--ignore-certificate-errors"
+
+# Environment variable
+BDG_CHROME_FLAGS="--ignore-certificate-errors" bdg https://localhost:5173
+
+# Multiple flags
+bdg https://example.com --chrome-flags="--ignore-certificate-errors --disable-web-security"
+```
+
+**Common flags for development:**
+- `--ignore-certificate-errors` - Self-signed SSL certs
+- `--disable-web-security` - CORS issues in development
+- `--allow-insecure-localhost` - Insecure localhost
+- `--disable-features=IsolateOrigins,site-per-process` - Cross-origin iframes
+
 ## Verification Best Practices
 
 **Prefer DOM queries over screenshots** for verification:
