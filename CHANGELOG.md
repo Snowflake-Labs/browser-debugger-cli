@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.7.1] - 2025-12-14
+
+### Added
+
+- **DOM scroll command** (`bdg dom scroll`) - Agent-friendly page navigation (#135)
+  - Scroll to elements by CSS selector: `bdg dom scroll "footer"`
+  - Scroll by pixel amount: `bdg dom scroll --down 500`
+  - Scroll to page positions: `bdg dom scroll --top`, `bdg dom scroll --bottom`
+  - Smooth scrolling with configurable behavior
+  - Works with cached query indices from previous `bdg dom query` results
+  - Thank you @felores for this contribution!
+- **Custom Chrome flags support** - Configure Chrome launch behavior (#143)
+  - CLI option: `bdg <url> --chrome-flags="--flag1,--flag2"`
+  - Environment variable: `export BDG_CHROME_FLAGS="--flag1,--flag2"`
+  - Useful for proxy configuration, custom user agents, and advanced Chrome settings
+  - Centralized flag parsing in start command
+  - Thank you @3dyuval for this contribution!
+- **Agent experience improvements** - Better Claude Code integration (#144)
+  - Auto-detect headless mode based on display availability (X11/Wayland on Linux, headless in CI)
+  - Block raw CDP screenshot commands with helpful suggestions to use `bdg dom screenshot`
+  - Consolidated skill documentation in `.claude/skills/bdg/SKILL.md`
+  - Per-repo session isolation with wrapper script support
+  - Auto-allocate ports for concurrent session support
+  - Persistent sessions survive HMR (Hot Module Reload) during development
+  - Thank you @sfc-gh-mochen for this contribution!
+
+### Changed
+
+- **Headless mode default** - Now auto-detected based on environment instead of always true
+- **Chrome launch logging** - Removed duplicate log messages and fixed misleading cleanup message
+
+### Documentation
+
+- Added `--chrome-flags` examples to consolidated SKILL.md
+- Expanded WebSocket and Shell migration details
+- Clarified persistent sessions and HMR workflow in skill documentation
+
 ## [0.7.0] - 2025-12-01
 
 ### Added
