@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.7.2] - 2025-12-17
+
+### Fixed
+
+- **Wrapper symlink resolution** - Fix infinite recursion when bdg-wrapper invoked via symlink (#152)
+  - Resolves symlinks before determining script directory
+  - Enables documented installation method: `ln -s /path/to/bdg-wrapper ~/.local/bin/bdg`
+  - Handles relative and absolute symlink targets
+  - Supports symlink chains across directories
+  - Thank you @sfc-gh-mochen for this contribution!
+
+### Changed
+
+- Updated development dependencies to latest versions
+  - @typescript-eslint/eslint-plugin: 8.48.1 → 8.49.0
+  - @typescript-eslint/parser: 8.48.1 → 8.49.0
+  - @eslint/js: 9.39.1 → 9.39.2
+  - eslint: 9.39.1 → 9.39.2
+  - knip: 5.72.0 → 5.73.4
+  - @types/node: 24.10.1 → 25.0.2
+  - devtools-protocol: 0.0.1551306 → 0.0.1558402
+
 ## [0.7.1] - 2025-12-14
 
 ### Added
