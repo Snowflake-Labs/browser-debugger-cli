@@ -49,33 +49,79 @@ bdg dom screenshot /tmp/el.png --selector "#main"   # Element only
 bdg dom screenshot /tmp/scroll.png --scroll "#target" # Scroll to element first
 ```
 
+## Playwright Selectors
+
+bdg supports Playwright-style selectors for precise element targeting:
+
+```bash
+# Text-based selectors (most useful for AI agents)
+bdg dom click 'button:has-text("Submit")'     # Contains text (case-insensitive)
+bdg dom click ':text("Login")'                 # Smallest element with exact text
+bdg dom fill 'input:text-is("Email")'          # Exact text match (case-sensitive)
+bdg dom click 'button:visible'                 # Only visible elements
+
+# Combined selectors
+bdg dom click 'button.primary:has-text("Save")'  # CSS + text
+bdg dom query 'div.modal:visible'                # CSS + visibility
+```
+
+**Why Playwright selectors?** Instead of a 2-step workflow:
+```bash
+# OLD: Query then use index (requires cache, can go stale)
+bdg dom query "button"     # → [0] Save, [1] Cancel
+bdg dom click --index 0    # Hope it's still the Save button
+
+# NEW: One precise selector (no cache, always accurate)
+bdg dom click 'button:text("Save")'
+```
+
 ## Form Interaction
 
 ```bash
 # Discover forms
 bdg dom form --brief              # Quick scan: field names, types, required
 
-# Fill and interact
-bdg dom fill "input[name='user']" "myuser"    # Fill by selector
-bdg dom fill 0 "value"                         # Fill by index (from query)
-bdg dom click "button.submit"                  # Click element
-bdg dom submit "form" --wait-navigation        # Submit and wait for page load
-bdg dom pressKey "input" Enter                 # Press Enter key
+# Fill and interact using selectors
+bdg dom fill "input[name='user']" "myuser"           # By attribute
+bdg dom fill 'input:has-text("Username")' "myuser"   # By label text
+bdg dom click "button.submit"                         # Click by class
+bdg dom click 'button:text("Submit")'                 # Click by text
+bdg dom submit "form" --wait-navigation               # Submit and wait
+
+# When multiple elements match, use --index
+bdg dom query "button"                    # Shows [0], [1], [2]...
+bdg dom click "button" --index 0          # Click first match
+bdg dom click "button" --index 1          # Click second match
+
+# Key press
+bdg dom pressKey "input" Enter            # Press Enter key
+bdg dom pressKey "input" Tab --times 3    # Press Tab 3 times
 
 # Options
 --no-wait          # Skip network stability wait
 --wait-navigation  # Wait for page navigation (traditional forms)
 --wait-network <ms> # Wait for network idle (SPA forms)
---index <n>        # Select nth element when multiple match
+--index <n>        # Select nth element when multiple match (0-based)
 ```
 
 ## DOM Inspection
 
 ```bash
-bdg dom query "selector"     # Find elements, returns [0], [1], [2]...
+bdg dom query "selector"     # Find elements matching selector
 bdg dom get "selector"       # Get semantic a11y info (token-efficient)
 bdg dom get "selector" --raw # Get full HTML
-bdg dom eval "js expression" # Run JavaScript
+bdg dom eval "js expression" # Run JavaScript (works with DOM elements)
+```
+
+**DOM eval now handles DOM elements:**
+```bash
+# Returns element description instead of failing
+bdg dom eval "document.querySelector('button')"
+# → "button.btn.btn-primary"
+
+# Still works for primitives and objects
+bdg dom eval "document.title"
+# → "My Page Title"
 ```
 
 ## CDP Access
@@ -105,9 +151,19 @@ bdg https://example.com/login
 bdg dom form --brief
 bdg dom fill "input[name='username']" "$USER"
 bdg dom fill "input[name='password']" "$PASS"
-bdg dom submit "button[type='submit']" --wait-navigation
+bdg dom click 'button:text("Log in")' --wait-navigation
 bdg dom screenshot /tmp/result.png
 bdg stop
+```
+
+### Click Button by Text
+```bash
+# Preferred: Use Playwright selector
+bdg dom click 'button:text("Submit")'
+
+# Alternative: Use --index if needed
+bdg dom query "button"            # Find all buttons
+bdg dom click "button" --index 2  # Click third button
 ```
 
 ### Wait for Element
@@ -185,8 +241,8 @@ bdg cdp Runtime.evaluate --params '{
   "returnByValue": true
 }'
 
-# GOOD: Check element exists
-bdg dom query ".submit-btn"
+# GOOD: Check element exists with text
+bdg dom query 'div:has-text("Success")'
 
 # GOOD: Check text content
 bdg cdp Runtime.evaluate --params '{
