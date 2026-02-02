@@ -444,10 +444,16 @@ async function handleSequenceCapture(
  * @param outputPath - Output file path or directory
  * @param options - Screenshot options
  */
-async function handleDomScreenshot(
+export async function handleDomScreenshot(
   outputPath: string,
   options: DomScreenshotCommandOptions
 ): Promise<void> {
+  // Set up direct mode if --chrome-ws-url provided
+  if (options.chromeWsUrl) {
+    const { setDirectWsUrl } = await import('@/connection/directMode.js');
+    setDirectWsUrl(options.chromeWsUrl);
+  }
+
   if (options.follow) {
     await handleSequenceCapture(outputPath, options);
     return;
@@ -562,6 +568,10 @@ export function registerDomCommands(program: Command): void {
     .command('screenshot')
     .description('Capture page or element screenshot')
     .argument('<path>', 'Output file path, or directory for --follow mode')
+    .option(
+      '--chrome-ws-url <url>',
+      'Connect directly to Chrome via WebSocket URL (bypasses daemon)'
+    )
     .option('--selector <selector>', 'CSS/Playwright selector for element capture')
     .option('--format <format>', 'Image format: png or jpeg (default: png)')
     .option('--quality <number>', 'JPEG quality 0-100 (default: 90)', parseInt)

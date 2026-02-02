@@ -285,6 +285,8 @@ export async function getNetworkHeaders(options?: {
  * Execute arbitrary CDP method via the daemon's worker.
  * Forwards CDP commands to the worker's active CDP connection.
  *
+ * If direct mode is active (--chrome-ws-url), uses direct connection instead.
+ *
  * @param method - CDP method name (e.g., 'Network.getCookies')
  * @param params - Optional method parameters
  * @returns Response with CDP method result
@@ -302,5 +304,11 @@ export async function callCDP(
   method: string,
   params?: Record<string, unknown>
 ): Promise<ClientResponse<'cdp_call'>> {
+  // Check if direct mode is active (--chrome-ws-url without daemon)
+  const { isDirectMode, callCDPDirect } = await import('@/connection/directMode.js');
+  if (isDirectMode()) {
+    return callCDPDirect(method, params);
+  }
+
   return sendCommand('cdp_call', { method, ...(params && { params }) });
 }
