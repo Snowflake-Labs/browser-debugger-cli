@@ -21,6 +21,8 @@ import type {
   StatusResponse,
   StopSessionRequest,
   StopSessionResponse,
+  WebSocketConnectionsRequest,
+  WebSocketConnectionsResponse,
 } from './session/index.js';
 import type { NoType } from './utils/index.js';
 
@@ -311,4 +313,30 @@ export async function callCDP(
   }
 
   return sendCommand('cdp_call', { method, ...(params && { params }) });
+}
+
+/**
+ * Get WebSocket connections from active session.
+ * Retrieves all captured WebSocket connections with their message frames.
+ *
+ * @returns WebSocket connections response
+ * @throws Error if connection fails, no active session, or permission denied
+ *
+ * @example
+ * ```typescript
+ * const response = await getWebSocketConnections();
+ * if (response.status === 'ok' && response.data) {
+ *   console.log('Total connections:', response.data.connections.length);
+ * }
+ * ```
+ */
+export async function getWebSocketConnections(): Promise<WebSocketConnectionsResponse> {
+  const request: WebSocketConnectionsRequest = withSession({
+    type: 'websocket_connections_request',
+  });
+  return sendRequest<WebSocketConnectionsRequest, WebSocketConnectionsResponse>(
+    request,
+    'WebSocket connections',
+    'websocket_connections_response'
+  );
 }
