@@ -213,6 +213,44 @@ bdg cdp Runtime.evaluate --params '{
 
 Use screenshots only for visual proof or when DOM structure is unknown.
 
+## Electron Apps
+
+Connect to running Electron apps instead of launching Chrome:
+
+```bash
+bdg electron                # Connect to Electron on default port 9229
+bdg electron --list         # List available Electron targets
+bdg electron --port 9230    # Connect to different port
+bdg electron --target ABC   # Connect to specific target ID
+```
+
+After connecting, all DOM commands work normally:
+
+```bash
+bdg electron                          # Start session with Electron
+bdg dom screenshot /tmp/electron.png  # Screenshot Electron window
+bdg dom query "button"                # Query DOM elements
+bdg dom eval "document.title"         # Execute JavaScript
+bdg dom click 'button:text("Save")'   # Click elements
+bdg status                            # Check session
+bdg stop                              # End session
+```
+
+**Requirements**: Electron app must be started with `--remote-debugging-port`:
+```bash
+# In Electron app's main process or launch script:
+electron --remote-debugging-port=9229 .
+```
+
+Or in code:
+```typescript
+app.commandLine.appendSwitch('remote-debugging-port', '9229');
+```
+
+**Electron vs Chrome sessions:**
+- `bdg <url>` - Launches new Chrome, navigates to URL
+- `bdg electron` - Connects to existing Electron app (no navigation)
+
 ## When NOT to Use bdg
 
 - **Static HTML** - Use `curl` + `htmlq`/`pq`
