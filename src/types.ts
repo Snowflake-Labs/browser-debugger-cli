@@ -449,6 +449,8 @@ export interface DomGetOptions {
   nodeId?: number;
   all?: boolean;
   nth?: number;
+  /** CSS selector for iframe to query within */
+  frame?: string;
 }
 
 /**

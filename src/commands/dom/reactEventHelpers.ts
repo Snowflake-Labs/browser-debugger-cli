@@ -14,12 +14,24 @@
  * - `:text("text")` - Smallest element with text (case-insensitive)
  * - `:text-is("text")` - Exact text match (case-sensitive)
  * - `:visible` - Element is visible
+ * - Frame targeting via optional frameSelector parameter
  *
  * This is embedded inside each form interaction script to enable Playwright selectors.
  * Must be defined inside an IIFE to be accessible by the script logic.
  */
 const QUERY_ELEMENTS_HELPER_BODY = `
-  function __bdgQueryElements(sel) {
+  function __bdgQueryElements(sel, frameSelector) {
+    // Get the document to query (main document or iframe contentDocument)
+    let doc = document;
+    let win = window;
+    if (frameSelector) {
+      const frame = document.querySelector(frameSelector);
+      if (!frame) return [];
+      doc = frame.contentDocument;
+      if (!doc) return []; // Cross-origin iframe
+      win = doc.defaultView || window;
+    }
+
     const pseudoMatches = [];
     let cssSelector = sel;
 
@@ -48,7 +60,7 @@ const QUERY_ELEMENTS_HELPER_BODY = `
     }
 
     cssSelector = cssSelector.replace(/  +/g, ' ').trim() || '*';
-    let elements = Array.from(document.querySelectorAll(cssSelector));
+    let elements = Array.from(doc.querySelectorAll(cssSelector));
 
     for (const pseudo of pseudoMatches) {
       elements = elements.filter(el => {
@@ -71,7 +83,7 @@ const QUERY_ELEMENTS_HELPER_BODY = `
             return (el.textContent || '').replace(/  +/g, ' ').trim() === pseudo.arg;
           }
           case 'visible': {
-            const style = window.getComputedStyle(el);
+            const style = win.getComputedStyle(el);
             if (style.display === 'none') return false;
             if (style.visibility === 'hidden') return false;
             if (style.opacity === '0') return false;
@@ -105,16 +117,17 @@ export const QUERY_ELEMENTS_HELPER = QUERY_ELEMENTS_HELPER_BODY;
 export const REACT_FILL_SCRIPT = `
 (function(selector, value, options) {
 ${QUERY_ELEMENTS_HELPER_BODY}
-  const allMatches = __bdgQueryElements(selector);
-  
+  const frameSelector = options.frame || null;
+  const allMatches = __bdgQueryElements(selector, frameSelector);
+
   if (allMatches.length === 0) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: 'Element not found',
       selector: selector
     };
   }
-  
+
   let el;
   const index = options.index;
   
@@ -222,10 +235,10 @@ ${QUERY_ELEMENTS_HELPER_BODY}
  * When selector matches multiple elements without index, prioritizes visible ones.
  */
 export const CLICK_ELEMENT_SCRIPT = `
-(function(selector, index) {
+(function(selector, index, frameSelector) {
 ${QUERY_ELEMENTS_HELPER_BODY}
-  const allMatches = __bdgQueryElements(selector);
-  
+  const allMatches = __bdgQueryElements(selector, frameSelector || null);
+
   if (allMatches.length === 0) {
     return {
       success: false,
@@ -233,9 +246,9 @@ ${QUERY_ELEMENTS_HELPER_BODY}
       selector: selector
     };
   }
-  
+
   let el;
-  
+
   // If index is provided, use it directly (0-based)
   if (typeof index === 'number' && index >= 0) {
     if (index >= allMatches.length) {
@@ -310,6 +323,8 @@ export interface FillOptions {
   blur?: boolean;
   /** Index to use if selector matches multiple elements (0-based) */
   index?: number;
+  /** CSS selector for iframe to query within */
+  frame?: string;
 }
 
 /**
