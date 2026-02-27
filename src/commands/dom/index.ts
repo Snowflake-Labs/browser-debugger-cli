@@ -17,19 +17,13 @@ import type {
   DomQueryCommandOptions,
   DomGetCommandOptions,
   DomScreenshotCommandOptions,
-  DomEvalCommandOptions,
 } from '@/commands/shared/optionTypes.js';
 import { positiveIntRule } from '@/commands/shared/validation.js';
 import { resolveA11yNode } from '@/telemetry/a11y.js';
 import { synthesizeA11yNode } from '@/telemetry/roleInference.js';
 import type { A11yNode, ScreenshotResult, ElementBounds } from '@/types.js';
 import { CommandError } from '@/ui/errors/index.js';
-import {
-  formatDomQuery,
-  formatDomGet,
-  formatDomEval,
-  formatDomScreenshot,
-} from '@/ui/formatters/dom.js';
+import { formatDomQuery, formatDomGet, formatDomScreenshot } from '@/ui/formatters/dom.js';
 import { createLogger } from '@/ui/logging/index.js';
 import { noNodesFoundError } from '@/ui/messages/errors.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
@@ -250,7 +244,7 @@ function resolveNodeWithFallback(
 async function handleDomQuery(selector: string, options: DomQueryCommandOptions): Promise<void> {
   await runCommand(
     async () => {
-      const result = await queryDOMElements(selector);
+      const result = await queryDOMElements(selector, options.frame);
       return { success: true, data: result };
     },
     options,
@@ -273,6 +267,7 @@ async function handleSelectorGetRaw(
       const getOptions = filterDefined({
         selector,
         all: options.all,
+        frame: options.frame,
       }) as DomGetHelperOptions;
 
       const result = await getDOMElements(getOptions);
@@ -468,56 +463,6 @@ export async function handleDomScreenshot(
 }
 
 /**
- * Handle bdg dom eval command.
- *
- * @param script - JavaScript expression to evaluate
- * @param options - Command options
- */
-async function handleDomEval(script: string, options: DomEvalCommandOptions): Promise<void> {
-  await runCommand(
-    async () => {
-      const { CDPConnection } = await import('@/connection/cdp.js');
-      const {
-        validateActiveSession,
-        getValidatedSessionMetadata,
-        verifyTargetExists,
-        executeScript,
-      } = await import('@/commands/dom/evalHelpers.js');
-
-      validateActiveSession();
-
-      const metadata = getValidatedSessionMetadata();
-
-      // Use port from session metadata, not CLI option
-      const port = metadata.port;
-      if (!port) {
-        throw new CommandError(
-          'Session metadata missing port',
-          { suggestion: 'Restart the session with: bdg stop && bdg <url>' },
-          EXIT_CODES.RESOURCE_NOT_FOUND
-        );
-      }
-      await verifyTargetExists(metadata, port);
-
-      const cdp = new CDPConnection();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      await cdp.connect(metadata.webSocketDebuggerUrl!);
-
-      const result = await executeScript(cdp, script);
-      cdp.close();
-
-      return {
-        success: true,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        data: { result: result.result?.value },
-      };
-    },
-    options,
-    formatDomEval
-  );
-}
-
-/**
  * Register DOM telemetry commands.
  *
  * @param program - Commander.js Command instance
@@ -538,19 +483,10 @@ export function registerDomCommands(program: Command): void {
       '<selector>',
       'CSS selector or Playwright selector (e.g., "button:has-text(\'Submit\')")'
     )
+    .option('--frame <selector>', 'Query inside iframe matching selector')
     .option('-j, --json', 'Output as JSON')
     .action(async (selector: string, options: DomQueryCommandOptions) => {
       await handleDomQuery(selector, options);
-    });
-
-  dom
-    .command('eval')
-    .description('Evaluate JavaScript expression in the page context')
-    .argument('<script>', 'JavaScript to execute (e.g., "document.title", "window.location.href")')
-    .option('-p, --port <number>', 'Chrome debugging port (default: 9222)')
-    .option('-j, --json', 'Wrap result in version/success format')
-    .action(async (script: string, options: DomEvalCommandOptions) => {
-      await handleDomEval(script, options);
     });
 
   dom
@@ -559,6 +495,7 @@ export function registerDomCommands(program: Command): void {
     .argument('<selector>', 'CSS selector or Playwright selector')
     .option('--raw', 'Output raw HTML with all filtering options')
     .option('--all', 'Get all matches (only with --raw)')
+    .option('--frame <selector>', 'Query inside iframe matching selector')
     .option('-j, --json', 'Output as JSON')
     .action(async (selector: string, options: DomGetCommandOptions) => {
       await handleDomGet(selector, options);

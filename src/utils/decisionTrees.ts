@@ -71,7 +71,7 @@ export const DECISION_TREES: Record<string, DecisionTree> = {
       },
       {
         question: 'Need to execute custom JavaScript?',
-        yesCommand: 'dom eval',
+        yesCommand: 'eval',
         noAction: 'next',
       },
       {

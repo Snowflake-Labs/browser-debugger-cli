@@ -68,12 +68,24 @@ const STABILITY_CHECK_INTERVAL_MS = 50;
 /**
  * JavaScript helper for Playwright-style selector support.
  * Injected into browser context for all DOM queries.
+ *
+ * @param selector - CSS/Playwright selector
+ * @param frameSelector - Optional iframe selector to query within
  */
 const QUERY_ELEMENTS_JS = `
-function __bdgQueryElements(selector) {
+function __bdgQueryElements(selector, frameSelector) {
+  // Get the document to query (main document or iframe contentDocument)
+  let doc = document;
+  if (frameSelector) {
+    const frame = document.querySelector(frameSelector);
+    if (!frame) return [];
+    doc = frame.contentDocument;
+    if (!doc) return []; // Cross-origin iframe
+  }
+
   // Quick check for Playwright pseudo-classes
   if (!/:(?:has-text|text-is|text|visible)\\s*(?:\\(|$)/.test(selector)) {
-    return [...document.querySelectorAll(selector)];
+    return [...doc.querySelectorAll(selector)];
   }
 
   // Parse out Playwright pseudo-classes
@@ -108,9 +120,10 @@ function __bdgQueryElements(selector) {
   cssSelector = cssSelector.replace(/\\s+/g, ' ').trim() || '*';
 
   // Query with CSS selector
-  let elements = [...document.querySelectorAll(cssSelector)];
+  let elements = [...doc.querySelectorAll(cssSelector)];
 
-  // Apply filters for each pseudo-class
+  // Apply filters for each pseudo-class (use main window for getComputedStyle)
+  const win = doc.defaultView || window;
   for (const pseudo of pseudoMatches) {
     elements = elements.filter(el => {
       switch (pseudo.type) {
@@ -133,7 +146,7 @@ function __bdgQueryElements(selector) {
           return el.textContent?.replace(/\\s+/g, ' ').trim() === pseudo.arg;
         }
         case 'visible': {
-          const style = window.getComputedStyle(el);
+          const style = win.getComputedStyle(el);
           if (style.display === 'none') return false;
           if (style.visibility === 'hidden') return false;
           if (style.opacity === '0') return false;
@@ -325,16 +338,19 @@ async function restoreScrollPosition(position: ScrollPosition): Promise<void> {
  * Supports standard CSS selectors and Playwright-style pseudo-classes.
  *
  * @param selector - CSS/Playwright selector
+ * @param frame - Optional iframe selector to query within
  * @returns Query result with matched nodes
  */
-export async function queryDOMElements(selector: string): Promise<DomQueryResult> {
+export async function queryDOMElements(selector: string, frame?: string): Promise<DomQueryResult> {
   const escapedSelector = escapeSelector(selector);
+  const escapedFrame = frame ? escapeSelector(frame) : '';
+  const frameArg = frame ? `'${escapedFrame}'` : 'null';
 
   const result = await callCDP('Runtime.evaluate', {
     expression: `
       ${QUERY_ELEMENTS_JS}
       (() => {
-        const elements = __bdgQueryElements('${escapedSelector}');
+        const elements = __bdgQueryElements('${escapedSelector}', ${frameArg});
         return elements.map((el, index) => {
           const tag = el.tagName?.toLowerCase() || '';
           const classes = el.className?.split?.(/\\s+/).filter(c => c.length > 0) || [];
@@ -383,12 +399,14 @@ export async function getDOMElements(options: DomGetOptions): Promise<DomGetResu
   }
 
   const escapedSelector = escapeSelector(options.selector);
+  const escapedFrame = options.frame ? escapeSelector(options.frame) : '';
+  const frameArg = options.frame ? `'${escapedFrame}'` : 'null';
 
   const result = await callCDP('Runtime.evaluate', {
     expression: `
       ${QUERY_ELEMENTS_JS}
       (() => {
-        const elements = __bdgQueryElements('${escapedSelector}');
+        const elements = __bdgQueryElements('${escapedSelector}', ${frameArg});
         ${options.all ? '' : 'elements.splice(1);'} // Keep only first unless --all
         return elements.map(el => {
           const tag = el.tagName?.toLowerCase() || '';

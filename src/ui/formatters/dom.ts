@@ -37,7 +37,7 @@ export function formatDomQuery(data: DomQueryResult): string {
       .text(`No nodes found matching "${selector}"`)
       .blank()
       .section('Suggestions:', [
-        `Verify selector: bdg dom eval "document.querySelector('${safeSelector}')"`,
+        `Verify selector: bdg eval "document.querySelector('${safeSelector}')"`,
         'List elements:   bdg dom query "*"',
       ])
       .build();

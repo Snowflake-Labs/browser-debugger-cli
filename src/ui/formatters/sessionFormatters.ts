@@ -39,7 +39,7 @@ export function buildDomainCommandsSection(): string {
     'DOM:',
     '  bdg dom query <selector>          Query elements (returns JSON)',
     '  bdg dom get <selector|index>      Get element details',
-    '  bdg dom eval <javascript>         Execute JavaScript in page context',
+    '  bdg eval <javascript>              Execute JavaScript in page context',
     '  bdg dom screenshot [path]         Capture full page screenshot',
     '  bdg dom fill <selector> <value>   Fill form input',
     '  bdg dom click <selector>          Click element',

@@ -113,6 +113,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .option('--index <n>', 'Element index if selector matches multiple (0-based)', parseInt)
     .option('--no-blur', 'Do not blur after filling (keeps focus on element)')
     .option('--no-wait', 'Skip waiting for network stability after fill')
+    .option('--frame <selector>', 'Query inside iframe matching selector')
     .addOption(jsonOption())
     .action(async (selector: string, value: string, options: FillCommandOptions) => {
       await runCommand(
@@ -121,7 +122,8 @@ export function registerFormInteractionCommands(program: Command): void {
             const fillOptions = filterDefined({
               index: options.index,
               blur: options.blur,
-            }) as { index?: number; blur?: boolean };
+              frame: options.frame,
+            }) as { index?: number; blur?: boolean; frame?: string };
 
             const result = await fillElement(cdp, selector, value, fillOptions);
 
@@ -158,6 +160,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .argument('<selector>', 'CSS/Playwright selector (e.g., "button", ":text(\'Submit\')")')
     .option('--index <n>', 'Element index if selector matches multiple (0-based)', parseInt)
     .option('--no-wait', 'Skip waiting for network stability after click')
+    .option('--frame <selector>', 'Query inside iframe matching selector')
     .addOption(jsonOption())
     .action(async (selector: string, options: ClickCommandOptions) => {
       await runCommand(
@@ -165,7 +168,8 @@ export function registerFormInteractionCommands(program: Command): void {
           return await withCDPConnection(async (cdp) => {
             const clickOptions = filterDefined({
               index: options.index,
-            }) as { index?: number };
+              frame: options.frame,
+            }) as { index?: number; frame?: string };
 
             const result = await clickElement(cdp, selector, clickOptions);
 
@@ -255,6 +259,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .option('--times <n>', 'Press key multiple times (default: 1)', parseInt)
     .option('--modifiers <mods>', 'Modifier keys: shift,ctrl,alt,meta (comma-separated)')
     .option('--no-wait', 'Skip waiting for network stability after key press')
+    .option('--frame <selector>', 'Query inside iframe matching selector')
     .addOption(jsonOption())
     .action(async (selector: string, key: string, options: PressKeyCommandOptions) => {
       await runCommand(
@@ -264,7 +269,8 @@ export function registerFormInteractionCommands(program: Command): void {
               index: options.index,
               times: options.times,
               modifiers: options.modifiers,
-            }) as { index?: number; times?: number; modifiers?: string };
+              frame: options.frame,
+            }) as { index?: number; times?: number; modifiers?: string; frame?: string };
 
             const result = await pressKeyElement(cdp, selector, key, pressKeyOptions);
 
@@ -306,6 +312,7 @@ export function registerFormInteractionCommands(program: Command): void {
     .option('--top', 'Scroll to page top')
     .option('--bottom', 'Scroll to page bottom')
     .option('--no-wait', 'Skip waiting for lazy-loaded content after scroll')
+    .option('--frame <selector>', 'Query inside iframe matching selector')
     .addOption(jsonOption())
     .action(async (selector: string | undefined, options: ScrollCommandOptions) => {
       await runCommand(
@@ -369,6 +376,7 @@ export function registerFormInteractionCommands(program: Command): void {
               right: options.right,
               top: options.top,
               bottom: options.bottom,
+              frame: options.frame,
             }) as {
               index?: number;
               down?: number;
@@ -377,6 +385,7 @@ export function registerFormInteractionCommands(program: Command): void {
               right?: number;
               top?: boolean;
               bottom?: boolean;
+              frame?: string;
             };
 
             const result = await scrollPage(cdp, selector, scrollOptions);
